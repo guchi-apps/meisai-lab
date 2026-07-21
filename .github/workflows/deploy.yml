@@ -190,6 +190,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          MIGRATE_DATABASE_URL: ${{ env.MIGRATE_DATABASE_URL }}
           DB_USER: ${{ env.DB_USER }}
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
           DB_HOST: ${{ env.DB_HOST }}
@@ -207,7 +208,7 @@ jobs:
           username: ${{ env.USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
           port: ${{ env.SSH_PORT }}
-          envs: DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,AUTH_URL,AUTH_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR,APP_PORT
+          envs: DATABASE_URL,MIGRATE_DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,AUTH_URL,AUTH_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR,APP_PORT
           script: |
             set -euo pipefail
             cd "${TARGET_DIR}"
@@ -244,7 +245,7 @@ jobs:
             npm install --omit=dev --no-audit --prefer-offline
 
             echo "Applying database migrations..."
-            npx prisma migrate deploy
+            DATABASE_URL="$MIGRATE_DATABASE_URL" npx prisma migrate deploy
 
             echo "Restarting PM2..."
             if command -v pm2 >/dev/null 2>&1; then

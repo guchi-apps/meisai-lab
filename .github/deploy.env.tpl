@@ -11,6 +11,8 @@ DB_PASSWORD=op://apps/DB/db-password
 DB_HOST=op://apps/DB/db-host
 DB_PORT=op://apps/DB/db-port
 DB_NAME=op://apps/meisai-lab/db-name
+MIGRATE_DB_USER=op://apps/DB/migrate-user
+MIGRATE_DB_PASSWORD=op://apps/DB/migrate-password
 
 AUTH_URL=op://apps/meisai-lab/auth-url
 AUTH_SECRET=op://apps/meisai-lab/auth-secret
