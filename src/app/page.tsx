@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { LineChart, Wallet } from "lucide-react";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { signInWithGoogleAction } from "@/app/actions/auth";
 import { HomeSignInButton } from "./home-signin-button";
 
 export default async function Home() {
-  const session = await auth();
-  if (session?.user?.id) {
+  const userId = await requireUserId();
+  if (userId) {
     redirect("/salaries");
   }
 
@@ -21,7 +21,7 @@ export default async function Home() {
         <Wallet className="size-7" />
       </span>
 
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">meisai-lab</h1>
+      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">明細ラボ</h1>
       <p className="mt-4 max-w-md text-balance text-muted-foreground">
         給与・賞与の記録と可視化をシンプルに。Googleアカウントでログインして始めましょう。
       </p>

@@ -32,7 +32,7 @@ Write-Host "  WSL:  http://${wslIp}:${port}/"
 if ($lanIp) {
     $phoneHost = "${lanIp}.sslip.io"
     Write-Host "  Phone: http://${phoneHost}:${port}/  (same Wi-Fi as this PC)"
-    Write-Host "  Google OAuth redirect URI: http://${phoneHost}:${port}/api/auth/callback/google"
+    Write-Host "  Supabase Redirect URL: http://${phoneHost}:${port}/auth/callback"
 }
 Write-Host ''
 netsh interface portproxy show all

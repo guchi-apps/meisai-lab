@@ -1,46 +1,45 @@
-import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-import { authConfig } from "@/auth.config";
-import { applyAuthUrlFromRequest } from "@/lib/auth-url";
+import { resolveOrigin } from "@/lib/request-origin";
+import { createProxyClient } from "@/lib/supabase/proxy";
 
-const { auth } = NextAuth(authConfig);
-
-const publicPaths = ["/", "/auth/signin", "/auth/error"];
+const publicPaths = ["/", "/auth/signin", "/auth/error", "/auth/callback"];
 
 function isPublicPath(pathname: string): boolean {
   return publicPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-export default auth((req) => {
-  applyAuthUrlFromRequest(req.url, req.headers.get("host"));
+export default async function proxy(request: NextRequest) {
+  const { supabase, getResponse } = createProxyClient(request);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { pathname } = req.nextUrl;
+  const { pathname } = request.nextUrl;
+  const origin = resolveOrigin(request.headers, request.url);
 
   // /api/* はルートハンドラ自身が requireUserId() で認証チェックし、
   // 401 JSON を返す設計のため、proxy ではリダイレクトせず素通りさせる。
   if (pathname.startsWith("/api/")) {
-    return NextResponse.next();
+    return getResponse();
   }
 
   if (isPublicPath(pathname)) {
-    if (req.auth?.user?.id && pathname === "/auth/signin") {
-      return NextResponse.redirect(new URL("/salaries", req.url));
+    if (user && pathname === "/auth/signin") {
+      return NextResponse.redirect(`${origin}/salaries`);
     }
-    return NextResponse.next();
+    return getResponse();
   }
 
-  if (!req.auth?.user?.id) {
-    const signInUrl = new URL("/auth/signin", req.url);
+  if (!user) {
+    const signInUrl = new URL(`${origin}/auth/signin`);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
   }
 
-  return NextResponse.next();
-});
+  return getResponse();
+}
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|apple-icon).*)"],
 };

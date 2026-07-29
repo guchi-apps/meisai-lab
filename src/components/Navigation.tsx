@@ -25,10 +25,10 @@ export function Navigation() {
     <>
       <header className="sticky top-0 z-40 hidden border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:flex md:items-center md:justify-between md:px-6 md:py-3">
         <Link href="/salaries" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            m
+          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Wallet className="size-4" />
           </span>
-          meisai-lab
+          明細ラボ
         </Link>
         <nav className="flex items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => {
@@ -48,6 +48,21 @@ export function Navigation() {
             );
           })}
         </nav>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <form action={signOutAction}>
+            <SignOutButton />
+          </form>
+        </div>
+      </header>
+
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:hidden">
+        <Link href="/salaries" className="flex items-center gap-2 font-semibold tracking-tight">
+          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Wallet className="size-4" />
+          </span>
+          明細ラボ
+        </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <form action={signOutAction}>

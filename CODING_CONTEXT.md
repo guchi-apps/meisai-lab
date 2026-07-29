@@ -9,7 +9,7 @@
 
 **プロジェクト名:** meisai-lab（給与・賞与管理アプリケーション）
 **ターゲット:** 個人ユーザーの給与・賞与の記録・可視化・確定申告データ準備
-**認証:** Google OAuth（NextAuth.js v5 / Auth.js、JWT セッション）
+**認証:** Google OAuth（Supabase Auth、複数アプリ共通のSupabaseプロジェクトを利用。issue #52）
 **デプロイ先:** VPS（PM2、Apache リバースプロキシ、本番ポートは `deploy/` 参照）
 
 ---
@@ -21,7 +21,7 @@ Frontend:      Next.js 16.x (App Router) + React 19.x + TypeScript 5.x
 UI:            Tailwind CSS v4 + shadcn/ui (Radix UI)
 ORM:           Prisma 6.x
 Database:      MariaDB / MySQL
-Auth:          NextAuth.js v5 (Auth.js) + @auth/prisma-adapter
+Auth:          Supabase Auth (@supabase/ssr + @supabase/supabase-js)
 Charts:        Recharts
 Form:          React Hook Form + Zod
 Date:          date-fns
@@ -102,7 +102,7 @@ DELETE       /api/deductions/[id]
 GET/POST     /api/tax-calculation-overrides
 DELETE       /api/tax-calculation-overrides/[id]
 
-GET/POST     /api/auth/[...nextauth]        NextAuth 標準ハンドラ
+GET          /auth/callback               Supabase OAuthコールバック（route.ts）
 ```
 
 バリデーションスキーマは [src/lib/validators.ts](./src/lib/validators.ts)（Zod）に集約。
@@ -128,7 +128,7 @@ GET/POST     /api/auth/[...nextauth]        NextAuth 標準ハンドラ
 ```
 /                          ランディングページ（ログインボタン）
 /auth/signin, /auth/error  サインイン・エラーページ
-/api/auth/...              NextAuth 自動ハンドラ
+/auth/callback             Supabase OAuthコールバック
 /manifest.webmanifest      PWA マニフェスト（src/app/manifest.ts）
 ```
 
@@ -136,21 +136,21 @@ GET/POST     /api/auth/[...nextauth]        NextAuth 標準ハンドラ
 
 ## 🔐 認証フロー
 
-- プロバイダーは Google のみ（[src/auth.ts](./src/auth.ts)）。セッション戦略は **JWT**（database ではない）。
-- `src/auth.config.ts` にページ設定・callbacks（`jwt` / `session` に `user.id` を積む）を集約し、`src/proxy.ts` と `src/auth.ts` の双方から読み込む。
-- ローカル開発では複数ホスト（localhost / WSL LAN IP / sslip.io）からアクセスするため、[src/lib/auth-url.ts](./src/lib/auth-url.ts) がリクエストの Host ヘッダーから `AUTH_URL` を都度上書きする（本番では何もしない）。
-- **ログイン通知（Signaly）**: `events.signIn` で [src/lib/signaly.ts](./src/lib/signaly.ts) の `notifySignalyLogin` を呼び、`SIGNALY_LOGIN_WEBHOOK_URL` が設定されていればメールアドレス・接続元 IP・時刻を Signaly の Webhook（Discord embed 互換 JSON）に通知する。未設定時は何もしない。
+- プロバイダーは Google のみ、Supabase Auth（複数アプリ共通のSupabaseプロジェクト）経由。セッションは Supabase が Cookie で管理する（[src/lib/supabase/server.ts](./src/lib/supabase/server.ts)、[src/lib/supabase/proxy.ts](./src/lib/supabase/proxy.ts)）。
+- ログインは Server Action（[src/app/actions/auth.ts](./src/app/actions/auth.ts)）が `supabase.auth.signInWithOAuth()` を呼び、返ってきた Supabase の認可URLへ redirect する。
+- コールバック（[src/app/auth/callback/route.ts](./src/app/auth/callback/route.ts)）で `exchangeCodeForSession()` した後、Supabaseユーザー（email）とPrisma `User`（`supabaseUserId`）を紐付ける。既存の `User` 行が無ければ新規作成する（許可ユーザー制限なし、issue #52）。
+- `requireUserId()`（[src/lib/auth-user.ts](./src/lib/auth-user.ts)）が `supabase.auth.getUser()` でSupabase側に問い合わせて検証し、対応する Prisma `User.id` を返す共通の認証チョークポイント。API・ページの双方から利用する。
+- **ログイン通知（Signaly）**: コールバックルートから [src/lib/signaly.ts](./src/lib/signaly.ts) の `notifySignalyLogin` を呼び、`SIGNALY_LOGIN_WEBHOOK_URL` が設定されていればメールアドレス・接続元 IP・時刻を Signaly の Webhook（Discord embed 互換 JSON）に通知する。未設定時は何もしない。
 
 ### Route Handler での認証確認（各 API 共通パターン）
 ```typescript
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await requireUserId();
+  if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
   // userId でスコープしたデータ取得
 }
 ```
@@ -197,14 +197,16 @@ meisai-lab/
 ├── src/
 │   ├── app/
 │   │   ├── (app)/                     認証必須ページ（salaries, bonuses, items, settings, tax-return）
-│   │   ├── auth/                      signin, error
+│   │   ├── auth/                      signin, error, callback（Supabase OAuthコールバック）
 │   │   ├── api/                       Route Handlers
 │   │   ├── layout.tsx / manifest.ts   共通レイアウト・PWAマニフェスト
 │   │   └── actions/auth.ts            サインイン・サインアウトの Server Action
 │   ├── components/                    UI コンポーネント（Charts/, ui/ 含む）
-│   ├── lib/                           DB クライアント、計算ロジック、バリデーション、Signaly通知、changelog 等
-│   ├── auth.ts / auth.config.ts       NextAuth 設定
-│   ├── proxy.ts                       旧 middleware.ts 相当（認証ガード）
+│   ├── lib/
+│   │   ├── auth-user.ts               requireUserId()（認証チョークポイント）
+│   │   ├── supabase/                  Supabaseクライアント（server.ts / proxy.ts）
+│   │   └── ...                        DB クライアント、計算ロジック、バリデーション、Signaly通知、changelog 等
+│   ├── proxy.ts                       旧 middleware.ts 相当（認証ガード、Supabaseセッションのリフレッシュ）
 │   └── types/                         型定義
 ├── prisma/                            スキーマ・マイグレーション
 ├── scripts/                          開発・DBセットアップ・changelog自動追記等
@@ -221,7 +223,7 @@ CI・デプロイ・ログインの3種類の通知を、自前の通知ハブ S
 | 種類 | 発火場所 | 環境変数 | 設定ファイル |
 |---|---|---|---|
 | CI / デプロイ / リリース | GitHub Actions | `SIGNALY_WEBHOOK_URL` | `.github/*.env.tpl`、`.github/scripts/signaly-notify.sh` |
-| ログイン | アプリ実行時（`events.signIn`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/deploy.env.tpl` |
+| ログイン | アプリ実行時（`/auth/callback`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/deploy.env.tpl` |
 
 両方とも 1Password の `apps/meisai-lab` アイテムに Webhook URL を登録済み。未設定でもアプリ・CIは通常どおり動作し、通知だけが送られない。
 
@@ -230,7 +232,7 @@ CI・デプロイ・ログインの3種類の通知を、自前の通知ハブ S
 ## 📚 参考資料
 
 - [Next.js 16 App Router](https://nextjs.org/docs/app)（**このリポジトリでは破壊的変更あり。`node_modules/next/dist/docs/` を優先すること**）
-- [NextAuth.js v5](https://authjs.dev/)
+- [Supabase Auth (SSR)](https://supabase.com/docs/guides/auth/server-side/nextjs)
 - [Prisma ORM](https://www.prisma.io/docs/)
 - [React Hook Form](https://react-hook-form.com/)
 - [Zod](https://zod.dev/)

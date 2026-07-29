@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { ItemManager } from "@/components/ItemManager";
 import type { ItemDTO } from "@/types";
 
 export default async function ItemsPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = await requireUserId();
   if (!userId) redirect("/auth/signin");
 
   const items = await db.item.findMany({

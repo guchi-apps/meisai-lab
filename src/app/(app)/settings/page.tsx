@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { buildEffectiveFrom, findApplicableTaxSetting } from "@/lib/taxSetting";
 import { APP_VERSION } from "@/lib/app-version";
@@ -16,9 +16,9 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
-  const session = await auth();
-  const user = session?.user;
-  if (!user?.id) redirect("/auth/signin");
+  const userId = await requireUserId();
+  if (!userId) redirect("/auth/signin");
+  const user = await db.user.findUniqueOrThrow({ where: { id: userId } });
 
   const { year: yearParam, month: monthParam } = await searchParams;
   const now = new Date();
@@ -27,9 +27,9 @@ export default async function SettingsPage({
   const effectiveFrom = buildEffectiveFrom(year, month);
 
   const [taxSetting, applicableTaxSetting, allTaxSettings] = await Promise.all([
-    db.taxSetting.findUnique({ where: { userId_effectiveFrom: { userId: user.id, effectiveFrom } } }),
-    findApplicableTaxSetting(user.id, effectiveFrom),
-    db.taxSetting.findMany({ where: { userId: user.id }, orderBy: { effectiveFrom: "desc" } }),
+    db.taxSetting.findUnique({ where: { userId_effectiveFrom: { userId, effectiveFrom } } }),
+    findApplicableTaxSetting(userId, effectiveFrom),
+    db.taxSetting.findMany({ where: { userId }, orderBy: { effectiveFrom: "desc" } }),
   ]);
   const taxSettingDto = taxSetting
     ? (JSON.parse(JSON.stringify(taxSetting)) as TaxSettingDTO)

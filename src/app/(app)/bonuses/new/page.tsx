@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { findApplicableTaxSetting } from "@/lib/taxSetting";
 import { calculatePreviousMonthTaxableSalary } from "@/lib/calculations";
@@ -8,8 +8,7 @@ import { BonusForm } from "@/components/BonusForm";
 import type { ItemDTO, TaxSettingDTO } from "@/types";
 
 export default async function NewBonusPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = await requireUserId();
   if (!userId) redirect("/auth/signin");
 
   const [taxSetting, items, salaryItems, previousSalary] = await Promise.all([
