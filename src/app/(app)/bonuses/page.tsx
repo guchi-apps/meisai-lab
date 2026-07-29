@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { BonusesClient } from "./bonuses-client";
 import type { BonusDTO, ItemDTO } from "@/types";
 
 export default async function BonusesPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = await requireUserId();
   if (!userId) redirect("/auth/signin");
 
   const [bonuses, items] = await Promise.all([

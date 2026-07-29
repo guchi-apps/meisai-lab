@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { LineChart, Wallet } from "lucide-react";
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { signInWithGoogleAction } from "@/app/actions/auth";
 import { HomeSignInButton } from "./home-signin-button";
 
 export default async function Home() {
-  const session = await auth();
-  if (session?.user?.id) {
+  const userId = await requireUserId();
+  if (userId) {
     redirect("/salaries");
   }
 

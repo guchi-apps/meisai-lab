@@ -66,8 +66,8 @@ print_phone_urls() {
     echo "Phone: http://${phone_host}:${port}/  (same Wi-Fi as this PC)"
     echo ""
     echo "Google login requires a domain (raw IP is rejected by Google OAuth)."
-    echo "Add this redirect URI in Google Cloud Console:"
-    echo "  http://${phone_host}:${port}/api/auth/callback/google"
+    echo "Add this URL to the Supabase project's Redirect URLs:"
+    echo "  http://${phone_host}:${port}/auth/callback"
   fi
   echo ""
 }

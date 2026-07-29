@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { SalariesClient } from "./salaries-client";
 import type { ItemDTO, SalaryDTO } from "@/types";
 
 export default async function SalariesPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = await requireUserId();
   if (!userId) redirect("/auth/signin");
 
   const [salaries, items] = await Promise.all([

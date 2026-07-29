@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import {
   getAnnualAggregate,
@@ -25,8 +25,7 @@ export default async function TaxReturnPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = await requireUserId();
   if (!userId) redirect("/auth/signin");
 
   const { year: yearParam } = await searchParams;

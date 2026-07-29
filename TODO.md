@@ -30,12 +30,12 @@
 
 ## 4. 外部サービスの手動設定（私は実行不可）
 
-- [ ] **1Password**: `apps/meisai-lab` アイテムに本番用 `auth-secret` / `google-client-id` / `google-client-secret` / `auth-url` / `target-dir` / `port` / `db-name` / `ci-webhook-url` を登録
+- [ ] **1Password**: `apps/meisai-lab` アイテムに本番用 `target-dir` / `port` / `db-name` / `ci-webhook-url` を登録（Supabaseの `project-url` / `publishable-key` は共通の `apps/Supabase` アイテムを参照、issue #52）
 - [x] ~~1Password: `login-webhook-url` 登録~~ → 完了
 - [x] ~~GitHub: `OP_SERVICE_ACCOUNT_TOKEN` シークレット登録~~ → 完了
 - [ ] **GitHub**: `develop` をデフォルトブランチ化、`main` の Branch protection 設定
 - [ ] **VPS**: `/apps/meisai-lab` ディレクトリ作成、PM2登録、Apache vhost設置、certbot（DNSレコード `meisai.gucchii.com` は登録済み。`https://meisai.gucchii.com/` は 503 — バックエンド未起動と推測。GitHub Actions のワークフロー実行履歴もまだ無く、deploy が一度も走っていない）
-- [ ] **Google Cloud（本番用）**: 開発用とは別にプロジェクト/OAuthクライアントを作成し、リダイレクトURI `https://meisai.gucchii.com/api/auth/callback/google` を登録 → 発行値を1Passwordへ保存
+- [ ] **Supabase（本番用）**: 共通Supabaseプロジェクト側でGoogle Providerを有効化し、Redirect URLsに `https://meisai.gucchii.com/auth/callback` を登録（Google CloudのOAuthクライアントは開発用と分離、issue #52）
 - [ ] **Signaly**: アプリ用のCI通知チャンネル作成、webhook URLを1Passwordの `ci-webhook-url` に登録
 - [x] ~~Signaly: ログイン通知チャンネル作成、webhook URLを1Passwordの `login-webhook-url` に登録~~ → 完了（`src/lib/signaly.ts` / `events.signIn` から通知）
 - [ ] **m-guchi/docs**: ポート一覧表（`apps/_docs/README.md` プロジェクト別ポート一覧）に `meisai-lab: 3106` を追記登録
