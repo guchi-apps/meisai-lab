@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "meisai-lab",
-    short_name: "meisai-lab",
+    name: "明細ラボ",
+    short_name: "明細ラボ",
     description: "給与・賞与管理アプリ",
     start_url: "/",
     display: "standalone",

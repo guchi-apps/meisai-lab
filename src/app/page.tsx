@@ -21,7 +21,7 @@ export default async function Home() {
         <Wallet className="size-7" />
       </span>
 
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">meisai-lab</h1>
+      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">明細ラボ</h1>
       <p className="mt-4 max-w-md text-balance text-muted-foreground">
         給与・賞与の記録と可視化をシンプルに。Googleアカウントでログインして始めましょう。
       </p>

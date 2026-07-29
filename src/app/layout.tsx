@@ -18,11 +18,11 @@ const mplusRounded = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "meisai-lab",
+  title: "明細ラボ",
   description: "給与・賞与管理アプリ",
   appleWebApp: {
     capable: true,
-    title: "meisai-lab",
+    title: "明細ラボ",
     statusBarStyle: "default",
   },
 };

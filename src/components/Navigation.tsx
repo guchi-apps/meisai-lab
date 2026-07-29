@@ -28,7 +28,7 @@ export function Navigation() {
           <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
             m
           </span>
-          meisai-lab
+          明細ラボ
         </Link>
         <nav className="flex items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => {
