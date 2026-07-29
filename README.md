@@ -10,14 +10,14 @@
 - NextAuth.js v5 (Google OAuth)
 - Recharts / React Hook Form + Zod
 
-## セットアップ
+## 開発環境
 
 ### 前提
 
 - Node.js >= 20.19.0
-- MySQL/MariaDB がローカルで起動していること
+- MySQL/MariaDB がインストール済みであること（起動していなくてもよい。`npm run dev` / `npm run db:setup` が未起動なら自動起動を試みる）
 
-### 手順
+### 初回セットアップ
 
 ```bash
 npm install
@@ -30,18 +30,23 @@ npm run db:setup
 
 # マイグレーション適用
 npm run db:migrate:dev
-
-# 開発サーバー起動
-npm run dev
 ```
 
 Google OAuth を使う場合は、開発用の Google Cloud クライアントを別途用意し、承認済みリダイレクト URI に `http://localhost:3000/api/auth/callback/google` を登録する。
+
+### 日々の起動
+
+```bash
+npm run dev
+```
+
+MySQL/MariaDB が未起動の場合は `npm run dev` の中で自動起動を試みる（`sudo service mysql start`、WSL の場合は権限確認プロンプトが出ることがある）。自動起動に失敗した場合は `sudo service mysql start` を手動で実行する。
 
 ## 主なスクリプト
 
 | コマンド | 内容 |
 | --- | --- |
-| `npm run dev` | 開発サーバー起動（WSL の LAN 経由アクセス設定込み） |
+| `npm run dev` | 開発サーバー起動（MySQL 自動起動・WSL の LAN 経由アクセス設定込み） |
 | `npm run build` | 本番ビルド（`prisma generate` を含む） |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | 型チェック（`tsc --noEmit`） |
