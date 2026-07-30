@@ -326,7 +326,9 @@ export function calculateAnnualResidentTax(
   );
   const furusatoNozeiLimit = resolve(
     "furusatoNozeiLimit",
-    incomeLeviedAfterAdjustmentTimes02.value / (1 - 0.1 - incomeTaxRate.value * 1.021) + 2000
+    Math.round(
+      incomeLeviedAfterAdjustmentTimes02.value / (1 - 0.1 - incomeTaxRate.value * 1.021) + 2000
+    )
   );
 
   const donationBase = resolve("donationBase", Math.max(furusatoNozeiEffective.value - 2000, 0));

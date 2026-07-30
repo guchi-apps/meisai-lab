@@ -99,7 +99,7 @@ export function FurusatoNozeiEstimate({
       <p className="text-sm">
         上限額の目安:{" "}
         <span className="text-lg font-semibold tabular-nums">
-          {Math.max(Math.floor(limit), 0).toLocaleString()} 円
+          {Math.max(Math.round(limit), 0).toLocaleString()} 円
         </span>
       </p>
     </div>

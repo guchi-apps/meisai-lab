@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LineChart, Wallet } from "lucide-react";
+import { LineChart, ReceiptJapaneseYen } from "lucide-react";
 import { requireUserId } from "@/lib/auth-user";
 import { signInWithGoogleAction } from "@/app/actions/auth";
 import { HomeSignInButton } from "./home-signin-button";
@@ -18,7 +18,7 @@ export default async function Home() {
       />
 
       <span className="mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-        <Wallet className="size-7" />
+        <ReceiptJapaneseYen className="size-7" />
       </span>
 
       <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">明細ラボ</h1>

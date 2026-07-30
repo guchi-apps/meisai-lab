@@ -167,8 +167,8 @@ export async function getFurusatoNozeiIncomeProjection(
   }
 
   return {
-    estimatedGrossIncome: estimatedSalaryGross + estimatedBonusGross,
-    estimatedSocialInsuranceTotal: estimatedSalaryInsurance + estimatedBonusInsurance,
+    estimatedGrossIncome: Math.round(estimatedSalaryGross + estimatedBonusGross),
+    estimatedSocialInsuranceTotal: Math.round(estimatedSalaryInsurance + estimatedBonusInsurance),
   };
 }
 
