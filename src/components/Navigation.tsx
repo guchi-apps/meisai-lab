@@ -23,7 +23,7 @@ export function Navigation() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 hidden border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:flex md:items-center md:justify-between md:px-6 md:py-3">
+      <header className="z-40 hidden shrink-0 border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:flex md:items-center md:justify-between md:px-6 md:py-3">
         <Link href="/salaries" className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Wallet className="size-4" />
@@ -56,7 +56,7 @@ export function Navigation() {
         </div>
       </header>
 
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:hidden">
+      <header className="z-40 flex shrink-0 items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:hidden">
         <Link href="/salaries" className="flex items-center gap-2 font-semibold tracking-tight">
           <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Wallet className="size-4" />
@@ -71,7 +71,7 @@ export function Navigation() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[74px] transform-gpu items-center border-t bg-background/95 py-1 backdrop-blur-md md:hidden">
+      <nav className="order-last z-40 flex h-[74px] shrink-0 items-center border-t bg-background/95 py-1 backdrop-blur-md md:hidden">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
