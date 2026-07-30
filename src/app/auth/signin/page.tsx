@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Wallet } from "lucide-react";
+import { ReceiptJapaneseYen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { requireUserId } from "@/lib/auth-user";
 import { signInWithGoogleAction } from "@/app/actions/auth";
@@ -25,7 +25,7 @@ export default async function SignInPage({
       <Card className="w-full max-w-sm text-center">
         <CardHeader className="items-center">
           <span className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Wallet className="size-6" />
+            <ReceiptJapaneseYen className="size-6" />
           </span>
           <CardTitle className="text-xl">ログイン</CardTitle>
           <CardDescription>Googleアカウントでログインしてください。</CardDescription>
