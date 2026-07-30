@@ -95,7 +95,7 @@ export default async function TaxReturnPage({
           <p className="mb-4 text-sm text-muted-foreground">
             まだ表示されていない年のデータを入力・確認したい場合は、対象の年を指定してください。
           </p>
-          <TaxReturnYearPicker />
+          <TaxReturnYearPicker existingYears={existingYears} />
         </CardContent>
       </Card>
 
