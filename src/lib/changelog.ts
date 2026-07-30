@@ -21,6 +21,14 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.1.1",
+    date: "2026-07-30",
+    changes: [
+      "スマートフォンで画面をスクロールすると、上部・下部のメニューが本来の位置からずれて表示されることがある不具合を修正",
+      "アプリのアイコンをレシートのデザインに変更",
+    ],
+  },
+  {
     version: "1.0.2",
     date: "2026-07-16",
     changes: [
