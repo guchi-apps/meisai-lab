@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/annualTax";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TaxYearSection } from "./tax-year-section";
 import { TaxReturnYearPicker } from "./tax-return-year-picker";
@@ -86,6 +87,22 @@ export default async function TaxReturnPage({
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">確定申告データ</h1>
+
+      <Alert>
+        <Info />
+        <AlertTitle>この画面の計算が前提としている条件</AlertTitle>
+        <AlertDescription>
+          <p>
+            扶養親族なし（配偶者控除・扶養控除は非対応）を前提としています。また、対応している所得控除は
+            給与所得控除・社会保険料控除・生命保険料控除（一般・介護医療・個人年金）・基礎控除・ふるさと納税
+            （寄附金控除）のみで、住宅ローン控除や医療費控除など他の控除は反映されません。
+          </p>
+          <p>
+            住民税の均等割・森林環境税は全国標準額で計算しており、お住まいの自治体独自の上乗せ課税には
+            対応していません。
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <Card>
         <CardHeader>
