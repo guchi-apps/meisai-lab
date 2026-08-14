@@ -21,6 +21,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.1.3",
+    date: "2026-08-14",
+    changes: [
+      "確定申告データ画面に、計算の前提条件に関する案内を追加。対応していない控除（扶養控除・住宅ローン控除など）と、住民税の均等割の扱いを画面上で確認できるように",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-07-30",
     changes: [
