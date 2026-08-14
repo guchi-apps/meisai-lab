@@ -21,6 +21,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.2.0",
+    date: "2026-08-14",
+    changes: [
+      "更新履歴画面に、リリースの変更内容が自動的に反映されるようになりました。これまでは仮の案内文が表示されることがありましたが、今後は実際の更新内容が表示されます。また、デプロイ処理の安定性を改善し、アプリが正常に起動しているにもかかわらずリリースが反映されないことがある問題を解消しました。",
+    ],
+  },
+  {
     version: "1.1.3",
     date: "2026-08-14",
     changes: [
