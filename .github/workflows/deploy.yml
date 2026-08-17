@@ -109,7 +109,6 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       SIGNALY_WEBHOOK_URL: ${{ secrets.SIGNALY_WEBHOOK_URL }}
       SIGNALY_LOGIN_WEBHOOK_URL: ${{ secrets.SIGNALY_LOGIN_WEBHOOK_URL }}
-      PORT: ${{ vars.PORT }}
 
     steps:
       - name: Checkout code
@@ -182,7 +181,6 @@ jobs:
       DB_NAME: ${{ secrets.DB_NAME }}
       SIGNALY_WEBHOOK_URL: ${{ secrets.SIGNALY_WEBHOOK_URL }}
       SIGNALY_LOGIN_WEBHOOK_URL: ${{ secrets.SIGNALY_LOGIN_WEBHOOK_URL }}
-      PORT: ${{ vars.PORT }}
 
     steps:
       - name: Checkout code
@@ -230,18 +228,19 @@ jobs:
           DB_NAME: ${{ env.DB_NAME }}
           SIGNALY_LOGIN_WEBHOOK_URL: ${{ env.SIGNALY_LOGIN_WEBHOOK_URL }}
           TARGET_DIR: ${{ env.TARGET_DIR }}
-          APP_PORT: ${{ env.PORT }}
         with:
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
           port: ${{ env.SSH_PORT }}
-          envs: DATABASE_URL,MIGRATE_DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR,APP_PORT
+          envs: DATABASE_URL,MIGRATE_DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR
           script: |
             set -euo pipefail
             cd "${TARGET_DIR}"
 
-            PORT="${APP_PORT:-3106}"
+            # 待受ポートはシークレットではなく設定値として平文で持つ
+            # （guchi-apps/docs の standards/ports.md「ポート番号は 1Password で管理しない」。#113）。
+            PORT=3106
 
             echo "Cleaning up old release files..."
             rm -rf .next public package.json package-lock.json prisma deploy next.config.ts
