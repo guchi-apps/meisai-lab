@@ -3,9 +3,14 @@
  * npm version の lifecycle 用: APP_CHANGELOG 先頭に新バージョンのエントリを追加する。
  *
  * リリース自動化ワークフロー（release-develop-to-main.yml）は、developへ取り込まれた
- * 差分から利用者向けの更新履歴を生成し、環境変数 RELEASE_CHANGELOG で渡してくる。
- * 設定されていればその内容を changes へ反映する。未設定・空のとき（ローカルで
- * `npm version` を叩いた場合など）は、従来どおり手で埋めるための枠だけを作る。
+ * 差分から利用者向けの文面を2種類生成し、環境変数で渡してくる。
+ *
+ * - RELEASE_CHANGELOG — 何が変わったか。設定されていれば changes へ反映する
+ * - RELEASE_USAGE — どう使うか。`1. `で始まる番号付きの複数行（issue-deck#1729）。
+ *   **画面で使える変化が無いリリースでは空**で渡るため、その場合は usage を書かない
+ *
+ * 未設定・空のとき（ローカルで `npm version` を叩いた場合など）は、従来どおり手で埋める
+ * ための枠だけを作る。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -28,13 +33,24 @@ export function parseReleaseChangelog(raw) {
     .filter((line) => line !== "");
 }
 
-// changes は生成された文面をそのまま埋め込むため、TypeScriptの文字列リテラルを
+/**
+ * RELEASE_USAGE の文面を usage 配列へ整形する。`1. `で始まる行が改行で並ぶ契約のため、
+ * **番号は落とさず**行をそのまま残す（画面側は番号付きリストとして出す）。
+ */
+export function parseReleaseUsage(raw) {
+  return (raw ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
+
+// changes・usage は生成された文面をそのまま埋め込むため、TypeScriptの文字列リテラルを
 // 壊さないようにエスケープする。
 function escapeForTs(value) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-export function insertChangelogEntry(content, version, date, changes = []) {
+export function insertChangelogEntry(content, version, date, changes = [], usage = []) {
   if (content.includes(`version: "${version}"`)) {
     return { content, inserted: false };
   }
@@ -46,6 +62,13 @@ export function insertChangelogEntry(content, version, date, changes = []) {
   }
 
   const items = changes.length > 0 ? changes : [CHANGELOG_PLACEHOLDER];
+  // 使い方が空のリリースでは、項目ごと書かない（空の見出しは書き漏らしに見えるため）。
+  const usageBlock =
+    usage.length > 0
+      ? `\n    usage: [\n${usage
+          .map((item) => `      "${escapeForTs(item)}",`)
+          .join("\n")}\n    ],`
+      : "";
   const insertAt = index + marker.length;
   const entry = `
   {
@@ -53,7 +76,7 @@ export function insertChangelogEntry(content, version, date, changes = []) {
     date: "${date}",
     changes: [
 ${items.map((item) => `      "${escapeForTs(item)}",`).join("\n")}
-    ],
+    ],${usageBlock}
   },`;
 
   return {
@@ -75,12 +98,14 @@ function main() {
   }
 
   const changes = parseReleaseChangelog(process.env.RELEASE_CHANGELOG);
+  const usage = parseReleaseUsage(process.env.RELEASE_USAGE);
   const original = readFileSync(changelogPath, "utf8");
   const { content, inserted } = insertChangelogEntry(
     original,
     version,
     todayJst(),
-    changes
+    changes,
+    usage
   );
 
   if (!inserted) {
@@ -91,7 +116,7 @@ function main() {
   writeFileSync(changelogPath, content, "utf8");
   if (changes.length > 0) {
     console.log(
-      `Added changelog entry for v${version} (${changes.length} change(s))`
+      `Added changelog entry for v${version} (${changes.length} change(s), ${usage.length} usage line(s))`
     );
   } else {
     console.log(`Added changelog stub for v${version}`);
