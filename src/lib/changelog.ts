@@ -2,7 +2,15 @@ export interface ChangelogEntry {
   version: string;
   /** ISO 8601 (YYYY-MM-DD) */
   date: string;
+  /** 何が変わったか。1項目1行 */
   changes: string[];
+  /**
+   * どう使うか（どこを開く / 何を押す・実行する / どうなれば成功か）。
+   * リリース時に共有ワークフローが生成し、環境変数 RELEASE_USAGE で渡ってくる。
+   * 画面で使える変化が無いリリースでは生成されないため、その場合は持たせない
+   * （空配列ではなく未定義にする。画面は usage が無いときに枠ごと出さない）。
+   */
+  usage?: string[];
 }
 
 /**

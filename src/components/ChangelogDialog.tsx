@@ -2,7 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
-import { History } from "lucide-react";
+import { History, Lightbulb } from "lucide-react";
 
 import { APP_CHANGELOG } from "@/lib/changelog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+/**
+ * アプリ内「更新履歴」ダイアログ。
+ *
+ * 中身（APP_CHANGELOG）はリリースのたびに scripts/version-changelog.mjs が先頭へ足す。
+ * usage（どう使うか）は**画面で使える変化が無いリリースでは生成されない**ため、
+ * 無いときは枠ごと出さない（空の見出しだけが残ると書き漏らしに見えるため）。
+ */
 export function ChangelogDialog() {
   return (
     <Dialog>
@@ -49,6 +56,20 @@ export function ChangelogDialog() {
                   </li>
                 ))}
               </ul>
+
+              {entry.usage && entry.usage.length > 0 && (
+                <div className="mt-3 space-y-1 rounded-md border bg-muted/50 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                    <Lightbulb className="h-3.5 w-3.5" />
+                    使い方
+                  </p>
+                  <ol className="list-decimal space-y-0.5 pl-5 text-xs text-muted-foreground">
+                    {entry.usage.map((line) => (
+                      <li key={line}>{line.replace(/^\d+[.)]\s*/, "")}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </section>
           ))}
         </div>

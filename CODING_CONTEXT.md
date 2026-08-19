@@ -185,7 +185,7 @@ export async function GET(request: Request) {
 | `tax-return/tax-calculation-detail.tsx` | 所得税・住民税の計算過程を項目ごとに表示し、手動上書きを保存する UI |
 | `tax-return/furusato-nozei-estimate.tsx` | ふるさと納税控除上限額の見込み表示 |
 | `AutoCalcHint` | 自動計算されたフィールドであることを示すヒント |
-| `ChangelogDialog` | アプリ内更新履歴ダイアログ（`src/lib/changelog.ts` の `APP_CHANGELOG` を表示） |
+| `ChangelogDialog` | アプリ内更新履歴ダイアログ（`src/lib/changelog.ts` の `APP_CHANGELOG` を表示。バージョンごとに変更点と、あれば「使い方」（`usage`）を表示） |
 | `Navigation` | 下部ナビゲーション |
 
 ---
