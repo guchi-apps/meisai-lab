@@ -2,7 +2,15 @@ export interface ChangelogEntry {
   version: string;
   /** ISO 8601 (YYYY-MM-DD) */
   date: string;
+  /** 何が変わったか。1項目1行 */
   changes: string[];
+  /**
+   * どう使うか（どこを開く / 何を押す・実行する / どうなれば成功か）。
+   * リリース時に共有ワークフローが生成し、環境変数 RELEASE_USAGE で渡ってくる。
+   * 画面で使える変化が無いリリースでは生成されないため、その場合は持たせない
+   * （空配列ではなく未定義にする。画面は usage が無いときに枠ごと出さない）。
+   */
+  usage?: string[];
 }
 
 /**
@@ -20,6 +28,18 @@ export interface ChangelogEntry {
  * 新しい順。リリース時に先頭へ追記してください。
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.3.0",
+    date: "2026-08-21",
+    changes: [
+      "更新履歴画面で、新機能があるバージョンにはその使い方も一緒に確認できるようになりました。",
+    ],
+    usage: [
+      "1. 画面上部の「更新履歴」ボタンを押す",
+      "2. 開いたダイアログで各バージョンの更新内容を確認する",
+      "3. 「使い方」欄がある項目では、番号付きの操作手順が表示されることを確認する",
+    ],
+  },
   {
     version: "1.2.3",
     date: "2026-08-18",
