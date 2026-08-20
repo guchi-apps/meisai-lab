@@ -29,6 +29,18 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.3.0",
+    date: "2026-08-21",
+    changes: [
+      "更新履歴画面で、新機能があるバージョンにはその使い方も一緒に確認できるようになりました。",
+    ],
+    usage: [
+      "1. 画面上部の「更新履歴」ボタンを押す",
+      "2. 開いたダイアログで各バージョンの更新内容を確認する",
+      "3. 「使い方」欄がある項目では、番号付きの操作手順が表示されることを確認する",
+    ],
+  },
+  {
     version: "1.2.3",
     date: "2026-08-18",
     changes: [
