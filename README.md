@@ -47,7 +47,7 @@ Google OAuthのクライアントはSupabase側（共通プロジェクト）で
 
 本番環境の値は、ワークフローの実行時にGitHubのsecret / variableから取得する。1Passwordを実行時に呼び出すことはない（サービスアカウントの日次レート制限を使い切ってデプロイが止まったため移行した。#96 / guchi-apps/issue-deck#1302）。開発環境では不要。
 
-どの値をGitHubのどこから取るかの正は [.github/secrets-manifest.tsv](./.github/secrets-manifest.tsv)。内訳は次のとおり。
+どの値をGitHubのどこから取るかの正は [.github/secrets-manifest.tsv](./.github/secrets-manifest.tsv)。マニフェストの`SOURCE`列に残る `op://...` は後述の同期スクリプトが読む参照先であり、**ワークフローの実行時には読まれない**（`op://` でgrepしてここがヒットしても移行漏れではない）。内訳は次のとおり。
 
 | 置き場所 | GitHub側の名前 | 用途 |
 | --- | --- | --- |
