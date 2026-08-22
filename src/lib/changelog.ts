@@ -29,6 +29,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.3.1",
+    date: "2026-08-22",
+    changes: [
+      "今回のリリースは開発・運用体制の改善が中心で、アプリの画面や操作性に影響する変更はありません。",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-08-21",
     changes: [
