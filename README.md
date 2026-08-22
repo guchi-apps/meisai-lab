@@ -39,23 +39,36 @@ npm run db:migrate:dev
 | `NEXT_PUBLIC_SUPABASE_URL` | SupabaseプロジェクトのURL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabaseのpublishable key |
 
-開発環境では1Passwordを使わず、上記2変数を `.env.local` に直接記載する。本番環境は `.github/deploy.env.tpl` 経由で1Password（vault: `apps`, item: `Supabase`）から注入される。
+開発環境では1Passwordを使わず、上記2変数を `.env.local` に直接記載する。本番環境はGitHubのorganization variable（`SUPABASE_PROJECT_URL` / `SUPABASE_PUBLISHABLE_KEY`）から注入される。
 
 Google OAuthのクライアントはSupabase側（共通プロジェクト）で設定する。開発用クライアントの承認済みリダイレクトURIには `http://localhost:3000/auth/callback` を登録する。
 
-### 本番デプロイに必要な1Passwordの項目
+### 本番デプロイに必要なGitHubのsecret / variable
 
-本番環境のシークレットは1Password（vault: `apps`）から `.github/deploy.env.tpl` 経由で注入される。開発環境では不要。
+本番環境の値は、ワークフローの実行時にGitHubのsecret / variableから取得する。1Passwordを実行時に呼び出すことはない（サービスアカウントの日次レート制限を使い切ってデプロイが止まったため移行した。#96 / guchi-apps/issue-deck#1302）。開発環境では不要。
 
-| item | 用途 |
-| --- | --- |
-| `meisai-lab` | このアプリ固有の値（`target-dir` / `port` / `db-name` / `ci-webhook-url` / `login-webhook-url`） |
-| `DB` | DB接続共通情報（`db-user` / `db-password` / `db-host` / `db-port` / `migrate-user` / `migrate-password`） |
-| `Server` | デプロイ先サーバー情報（`host` / `username` / `ssh-port`） |
-| `githubaction-sshkey` | デプロイ用SSH秘密鍵（`private_key`） |
-| `Supabase` | Supabase Authの値（`project-url` / `publishable-key`） |
+どの値をGitHubのどこから取るかの正は [.github/secrets-manifest.tsv](./.github/secrets-manifest.tsv)。内訳は次のとおり。
 
-GitHub Actions側のSecretは `OP_SERVICE_ACCOUNT_TOKEN` の1つのみ（全アプリ共通）。各項目の詳細な参照先は [.github/deploy.env.tpl](./.github/deploy.env.tpl) を参照。
+| 置き場所 | GitHub側の名前 | 用途 |
+| --- | --- | --- |
+| organization secret | `SERVER_SSH_PRIVATE_KEY` / `SERVER_HOST` / `SERVER_USERNAME` / `SERVER_SSH_PORT` | デプロイ先VPSへのSSH接続 |
+| organization secret | `SHARED_DB_HOST` / `SHARED_DB_PORT` / `SHARED_DB_USER` / `SHARED_DB_PASSWORD` / `SHARED_DB_MIGRATE_USER` / `SHARED_DB_MIGRATE_PASSWORD` | 共有MariaDBの接続情報 |
+| organization variable | `SUPABASE_PROJECT_URL` / `SUPABASE_PUBLISHABLE_KEY` | Supabase Authの値（クライアントに埋め込む公開値のためvariable） |
+| repository secret | `TARGET_DIR` / `DB_NAME` / `SIGNALY_WEBHOOK_URL` / `SIGNALY_LOGIN_WEBHOOK_URL` | meisai-lab固有の値 |
+
+`PORT` はsecret / variableでは管理せず、`.github/workflows/deploy.yml` に平文で持つ（#113）。`OP_SERVICE_ACCOUNT_TOKEN` のrepository secretは登録したままだが、ワークフローからは参照していない。
+
+### 値を変えたときの同期
+
+値の正は引き続き1Password（vault: `apps`）にあり、**値を変えたときだけ** GitHubへ同期する。デプロイのたびに実行するものではない。
+
+```bash
+op signin
+scripts/sync-github-secrets.sh --dry-run   # 差分の確認
+scripts/sync-github-secrets.sh             # repository secretを同期
+```
+
+organization側の共通値（マニフェストの`SCOPE`が`inherit`の行）はこのリポジトリからは同期しない。全アプリ共通のため、共通側のマニフェストで管理する。
 
 ### 日々の起動
 
