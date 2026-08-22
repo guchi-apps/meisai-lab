@@ -222,10 +222,10 @@ CI・デプロイ・ログインの3種類の通知を、自前の通知ハブ S
 
 | 種類 | 発火場所 | 環境変数 | 設定ファイル |
 |---|---|---|---|
-| CI / デプロイ / リリース | GitHub Actions | `SIGNALY_WEBHOOK_URL` | `.github/*.env.tpl`、`.github/scripts/signaly-notify.sh` |
-| ログイン | アプリ実行時（`/auth/callback`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/deploy.env.tpl` |
+| CI / デプロイ / リリース | GitHub Actions | `SIGNALY_WEBHOOK_URL` | `.github/secrets-manifest.tsv`、`.github/scripts/signaly-notify.sh` |
+| ログイン | アプリ実行時（`/auth/callback`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/secrets-manifest.tsv` |
 
-両方とも 1Password の `apps/meisai-lab` アイテムに Webhook URL を登録済み。未設定でもアプリ・CIは通常どおり動作し、通知だけが送られない。
+両方ともGitHubのrepository secretとして登録済み（値の正は 1Password の `apps/meisai-lab` アイテム。#96）。未設定でもアプリ・CIは通常どおり動作し、通知だけが送られない。
 
 ---
 
