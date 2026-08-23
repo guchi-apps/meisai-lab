@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DetailDonutChart } from "@/components/Charts/DetailDonutChart";
+import { DetailBreakdownChart } from "@/components/Charts/DetailBreakdownChart";
 import { BonusEarningChart } from "@/components/Charts/BonusEarningChart";
 import { BonusDeductionChart } from "@/components/Charts/BonusDeductionChart";
 import { ChartViewModeToggle } from "@/components/Charts/ChartViewModeToggle";
@@ -153,7 +153,7 @@ export function BonusesClient({
                 </CardContent>
                 {expandedId === yearKey && (
                   <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
-                    <DetailDonutChart
+                    <DetailBreakdownChart
                       earningRow={sumRecords(yearBonuses.map((b) => buildBonusEarningRow(b.data, items)))}
                       deductionRow={sumRecords(yearBonuses.map((b) => buildDeductionRow(b.data, items)))}
                       earningItemBreakdown={{
@@ -269,7 +269,7 @@ function BonusYearGroup({
             </CardContent>
             {expandedId === bonus.id && (
               <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
-                <DetailDonutChart
+                <DetailBreakdownChart
                   earningRow={buildBonusEarningRow(bonus.data, items)}
                   deductionRow={buildDeductionRow(bonus.data, items)}
                   earningItemBreakdown={{
