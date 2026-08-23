@@ -385,8 +385,12 @@ export function DetailBreakdownChart({
     );
   }
 
-  const drilldownSlices = drilldown ? toDetailSlices(breakdownOf(drilldown.side, drilldown.category), isDark) : [];
+  const drilldownItems = drilldown ? breakdownOf(drilldown.side, drilldown.category) : [];
+  const drilldownSlices = toDetailSlices(drilldownItems, isDark);
   const drilldownTotal = totalOf(drilldownSlices);
+  // 精算項目や年末調整の差額はマイナスになり得る。積み上げ横棒にも「分類に占める割合」にも
+  // 載せられないため棒からは外し、金額は一覧表に残したうえで外した旨をここで断る。
+  const excludedFromBar = drilldownItems.filter((item) => item.value <= 0);
   // 内訳の強調は、いま開いている分類の選択だけを見る（別の分類の選択が残っていても引きずらない）
   const selectedItemName =
     selection?.item !== undefined &&
@@ -437,6 +441,13 @@ export function DetailBreakdownChart({
             selectedName={selectedItemName}
             onSelect={(name) => handleSelectItem(drilldown.side, drilldown.category, name)}
           />
+          {excludedFromBar.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              マイナスの項目（
+              {excludedFromBar.map((item) => `${item.name} ${item.value.toLocaleString()}円`).join("、")}
+              ）は棒に含めていません。金額は下の一覧表を参照してください。
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

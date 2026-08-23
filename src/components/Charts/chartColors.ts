@@ -8,11 +8,17 @@ export const EARNING_COLORS: readonly ColorPair[] = [
   { light: "#008300", dark: "#008300" }, // slot4 green
 ];
 
-export const NET_LINE_COLOR: ColorPair = { light: "#4a3aa7", dark: "#9085e9" }; // slot5 violet
+// 手取り額は「支給 - 控除」の導出値であってカテゴリではないため、カテゴリカルの
+// スロットではなく無彩色のインクを充てる。元は菫(slot5)だったが、菫は「控除」へ回した
+// （下記参照）。無彩色は色覚特性の影響を受けず、支給の4色すべてと確実に区別できる。
+// 明細の内訳バーで手取り額を無彩色のトラックとして描くのとも揃う（#57）。
+export const NET_LINE_COLOR: ColorPair = { light: "#52514e", dark: "#c3c2b7" };
 
 // 「控除」は元は橙(#eb6834)だったが、隣り合う「法定控除」の赤との判別が
 // validate_palette.js の normal-vision floor（ΔE 7.1 < 15）で不合格だったため菫へ変更した。
-// 積み上げ横棒では2色が必ず接するので、色だけで区別できないと読めない（#57）。
+// 積み上げ横棒では2色が必ず接するので、色だけで区別できないと読めない。
+// 赤と併せて合格する暖色は無く（橙 ΔE 7.1 / 桃 ΔE 13.2）、寒色4色は支給の各分類が
+// 使っているため、菫を手取り額から譲り受けるしか選択肢が無い（#57）。
 export const DEDUCTION_COLORS: readonly ColorPair[] = [
   { light: "#e34948", dark: "#e66767" }, // slot8 red (法定控除)
   { light: "#4a3aa7", dark: "#9085e9" }, // slot5 violet (控除)
