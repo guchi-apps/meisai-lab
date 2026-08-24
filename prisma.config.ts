@@ -4,7 +4,11 @@
 import { config as loadEnv } from "dotenv";
 import { defineConfig } from "prisma/config";
 
-loadEnv({ path: ".env.local" });
+// `quiet: true` is required: without it dotenv v17 prints an "injected env" notice to
+// **stdout**, which gets mixed into the SQL that `prisma migrate dev` /
+// `migrate diff --script` write to the same stdout — producing a migration.sql whose
+// first line is not SQL and breaking `prisma migrate deploy` in production.
+loadEnv({ path: ".env.local", quiet: true });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

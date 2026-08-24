@@ -102,3 +102,17 @@ Status = 今どこにいるか、Label = どんな性質・条件があるか、
 | ビルド | `npm run build:ci` |
 | マイグレーション適用 | `npm run db:migrate:deploy` |
 <!-- END:multi-agent-rules -->
+
+## マイグレーション作成時の注意
+
+`prisma.config.ts` の `loadEnv()` からは **`quiet: true` を外さない**。
+dotenv v17 は案内文（`◇ injected env ...`）を **stdout** へ出すため、同じstdoutへSQLを書き出す
+`prisma migrate dev` / `prisma migrate diff --script` の出力に混ざり、
+`migration.sql` の1行目がSQLでなくなる。本番の `prisma migrate deploy` が構文エラー（1064 → P3018）で
+失敗し、`_prisma_migrations` に失敗記録が残ってP3009で以後のデプロイが止まる（#136）。
+
+新しいマイグレーションを作ったら、コミット前に1行目を確認する。
+
+```bash
+head -1 prisma/migrations/*/migration.sql
+```
