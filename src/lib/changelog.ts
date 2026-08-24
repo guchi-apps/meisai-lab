@@ -29,6 +29,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.4.1",
+    date: "2026-08-24",
+    changes: [
+      "サーバー再起動時にサイトが一時的に繋がらなくなる不具合を修正しました。また、データベースの更新処理の安定性を改善しました。",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-08-24",
     changes: [
