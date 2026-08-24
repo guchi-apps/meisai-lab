@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { DetailDonutChart } from "@/components/Charts/DetailDonutChart";
+import { DetailBreakdownChart } from "@/components/Charts/DetailBreakdownChart";
 import {
   buildDeductionItems,
   buildDeductionRow,
@@ -131,7 +131,7 @@ export function SalaryList({
                 </CardContent>
                 {expandedId === yearKey && (
                   <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
-                    <DetailDonutChart
+                    <DetailBreakdownChart
                       earningRow={sumRecords(yearSalaries.map((s) => buildSalaryEarningRow(s.data, items)))}
                       deductionRow={sumRecords(yearSalaries.map((s) => buildDeductionRow(s.data, items)))}
                       earningItemBreakdown={{
@@ -227,7 +227,7 @@ function SalaryYearGroup({
                   {expandedId === salary.id && (
                     <TableRow key={`${salary.id}-detail`}>
                       <TableCell colSpan={4}>
-                        <DetailDonutChart
+                        <DetailBreakdownChart
                           earningRow={buildSalaryEarningRow(salary.data, items)}
                           deductionRow={buildDeductionRow(salary.data, items)}
                           earningItemBreakdown={{ その他支給: buildSalaryOtherEarningItems(salary.data, items) }}
@@ -289,7 +289,7 @@ function SalaryYearGroup({
               </CardContent>
               {expandedId === salary.id && (
                 <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
-                  <DetailDonutChart
+                  <DetailBreakdownChart
                     earningRow={buildSalaryEarningRow(salary.data, items)}
                     deductionRow={buildDeductionRow(salary.data, items)}
                     earningItemBreakdown={{ その他支給: buildSalaryOtherEarningItems(salary.data, items) }}

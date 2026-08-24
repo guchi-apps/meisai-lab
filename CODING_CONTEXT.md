@@ -181,7 +181,8 @@ export async function GET(request: Request) {
 | `SalaryForm` / `BonusForm` | 給与・賞与の入力フォーム（React Hook Form + Zod、区分ごとの小計表示、自動計算のヒント表示） |
 | `SalaryList` | 給与一覧（PC: テーブル、モバイル: カード） |
 | `ItemManager` | カスタム項目の追加・編集・削除・並び替え（`@dnd-kit`） |
-| `Charts/SalaryEarningChart` `SalaryDeductionChart` `BonusEarningChart` `BonusDeductionChart` | 支給・控除内訳のグラフ（`ChartFrame` / `ChartLegend` / `chartColors` で共通化） |
+| `Charts/SalaryEarningChart` `SalaryDeductionChart` `BonusEarningChart` `BonusDeductionChart` | 支給額・控除額の推移グラフ（`ChartFrame` / `ChartLegend` / `chartColors` で共通化） |
+| `Charts/DetailBreakdownChart` | 明細1件（年別では1年分）の内訳。支給を上段・控除を下段に置いた積み上げ横棒と、全項目を常時表示する一覧表。横軸の最大値は支給総額で固定し、控除の棒の長さがそのまま負担割合になる。大分類をクリックするとその分類だけを100%とした内訳へ切り替わり、グラフと一覧表は選択状態を双方向に連動させる（#57） |
 | `tax-return/tax-calculation-detail.tsx` | 所得税・住民税の計算過程を項目ごとに表示し、手動上書きを保存する UI |
 | `tax-return/furusato-nozei-estimate.tsx` | ふるさと納税控除上限額の見込み表示 |
 | `AutoCalcHint` | 自動計算されたフィールドであることを示すヒント |
@@ -222,10 +223,30 @@ CI・デプロイ・ログインの3種類の通知を、自前の通知ハブ S
 
 | 種類 | 発火場所 | 環境変数 | 設定ファイル |
 |---|---|---|---|
-| CI / デプロイ / リリース | GitHub Actions | `SIGNALY_WEBHOOK_URL` | `.github/*.env.tpl`、`.github/scripts/signaly-notify.sh` |
-| ログイン | アプリ実行時（`/auth/callback`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/deploy.env.tpl` |
+| CI / デプロイ / リリース | GitHub Actions | `SIGNALY_WEBHOOK_URL` | `.github/secrets-manifest.tsv`、`.github/scripts/signaly-notify.sh` |
+| ログイン | アプリ実行時（`/auth/callback`） | `SIGNALY_LOGIN_WEBHOOK_URL` | `src/lib/signaly.ts`、`.github/secrets-manifest.tsv` |
 
-両方とも 1Password の `apps/meisai-lab` アイテムに Webhook URL を登録済み。未設定でもアプリ・CIは通常どおり動作し、通知だけが送られない。
+両方ともGitHubのrepository secretとして登録済み（値の正は 1Password の `apps/meisai-lab` アイテム。#96）。未設定でもアプリ・CIは通常どおり動作し、通知だけが送られない。
+
+---
+
+## 🔍 クリック操作を伴うUIの動作確認
+
+`npm run dev`（Turbopack）で起動したサーバーをヘッドレスブラウザで開くと、
+**ハイドレーションが完了せずクリックが一切効かない**（DOM要素に React の
+`__reactFiber$` が付かないままになる）。SSR済みのHTMLは返るため一見動いているように
+見えるが、`button` を `click()` しても状態が変わらず、原因の切り分けに時間を取られる。
+
+クリック・ドリルダウン・選択の連動などを確認するときは、**本番ビルドを使う**。
+
+```bash
+npm run build:ci && npx next start -p 11057
+```
+
+本番ビルドなら同じヘッドレス環境で 0.5 秒ほどでハイドレーションが完了する。
+なお `next start` は `src/proxy.ts` が Supabase のURL・キーを必須にするため
+`.env.local` が要る（画面確認だけならダミー値でよい。ログイン不要の公開パスは
+`src/proxy.ts` の `publicPaths` を参照）。確認日 2026-08-23 / #57
 
 ---
 
@@ -245,4 +266,4 @@ CI・デプロイ・ログインの3種類の通知を、自前の通知ハブ S
 
 ---
 
-**最終更新日:** 2026-07-05
+**最終更新日:** 2026-08-23
