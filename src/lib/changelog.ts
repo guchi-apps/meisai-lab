@@ -29,6 +29,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.4.2",
+    date: "2026-08-25",
+    changes: [
+      "CI・デプロイ通知の安定性を改善しました。通知サービスに一時的な不具合があっても、デプロイやビルド自体の成功・失敗判定には影響しなくなりました。",
+    ],
+  },
+  {
     version: "1.4.1",
     date: "2026-08-24",
     changes: [
