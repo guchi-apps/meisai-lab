@@ -21,6 +21,9 @@ export async function notifySignalyLogin(params: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        // 共通チャンネルではチャンネルから送信元を判別できないため、
+        // Signalyが送信元を見分けるための source をリポジトリ名で明示する。
+        source: "meisai-lab",
         embeds: [{ title: "🔐 meisai-lab にログイン", color: 5763719, fields }],
       }),
     });
