@@ -29,6 +29,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.4.3",
+    date: "2026-08-25",
+    changes: [
+      "ログイン通知の送信設定を見直し、通知が正しい通知チャンネルへ届くよう修正しました。",
+    ],
+  },
+  {
     version: "1.4.2",
     date: "2026-08-25",
     changes: [
