@@ -59,9 +59,15 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip");
-  await notifySignalyLogin({ email: user.email, ip });
+  // 接続元IP・User-Agent は notifySignalyLogin がリクエストヘッダーから拾う
+  await notifySignalyLogin({
+    email: user.email,
+    name:
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      null,
+    provider: user.app_metadata?.provider ?? null,
+  });
 
   const response = NextResponse.redirect(`${origin}${redirectPath}`);
   response.cookies.delete(AUTH_NEXT_COOKIE);
