@@ -29,6 +29,13 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.4.5",
+    date: "2026-08-28",
+    changes: [
+      "今回のリリースはCI・デプロイ通知の仕組みに関する内部的な改善のみで、アプリの機能や操作方法に変更はありません。",
+    ],
+  },
+  {
     version: "1.4.4",
     date: "2026-08-26",
     changes: [
