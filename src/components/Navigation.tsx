@@ -7,7 +7,6 @@ import { Wallet, Gift, ListChecks, Receipt, ReceiptJapaneseYen, Settings, LogOut
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { signOutAction } from "@/app/actions/auth";
 
 const navItems = [
@@ -48,12 +47,9 @@ export function Navigation() {
             );
           })}
         </nav>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <form action={signOutAction}>
-            <SignOutButton />
-          </form>
-        </div>
+        <form action={signOutAction}>
+          <SignOutButton />
+        </form>
       </header>
 
       <header className="z-40 flex shrink-0 items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/60 md:hidden">
@@ -63,12 +59,9 @@ export function Navigation() {
           </span>
           明細ラボ
         </Link>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <form action={signOutAction}>
-            <SignOutButton />
-          </form>
-        </div>
+        <form action={signOutAction}>
+          <SignOutButton />
+        </form>
       </header>
 
       <nav className="order-last z-40 flex h-[74px] shrink-0 items-center border-t bg-background/95 py-1 backdrop-blur-md md:hidden">
