@@ -25,6 +25,7 @@ model User {
   taxSettings             TaxSetting[]
   deductions              Deduction[]
   taxCalculationOverrides TaxCalculationOverride[]
+  furusatoDonations       FurusatoDonation[]
 }
 
 // --- Application models ---
@@ -133,4 +134,36 @@ model TaxCalculationOverride {
 
   @@unique([userId, year, field])
   @@index([userId, year])
+}
+
+// ふるさと納税の寄付明細。年間合計はこの明細から集計し、これを正本として扱う。
+// 既存の Deduction.furusatoNozei は「明細に載せていない調整額」として残し、
+// 住民税計算に使う額は 明細合計 + 調整額 とする（annualTaxData.ts を参照）。
+model FurusatoDonation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  year         Int // donatedAt の西暦。年ごとの集計・絞り込み用に非正規化して保持する
+  donatedAt    DateTime // 寄付日
+  municipality String // 自治体名（例: "北海道 紋別市"）
+  amount       Decimal  @db.Decimal(10, 2)
+  returnItem   String? // 返礼品名
+  category     String? // カテゴリ（肉・魚介類 など）
+  portalSite   String? // 利用サイト（さとふる・楽天ふるさと納税 など）
+
+  // "notApplied"(未申請) / "applied"(申請済み) / "accepted"(受付済み) / "switchedToTaxReturn"(確定申告へ切替)
+  oneStopStatus     String @default("notApplied")
+  // "notReceived"(未取得) / "received"(受領済み) / "notNeeded"(不要（ワンストップ）)
+  certificateStatus String @default("notReceived")
+
+  memo String? @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft delete
+
+  @@index([userId, year])
+  @@index([userId, donatedAt])
+  @@index([userId, deletedAt])
 }
