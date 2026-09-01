@@ -74,6 +74,25 @@ Process:       PM2（本番）
 ### Deduction（年次控除）
 確定申告・住民税計算で使う年単位の控除額。`deductionType` は `lifeInsuranceGeneral` / `lifeInsuranceCareMedical` / `lifeInsurancePension` / `furusatoNozei`。
 
+`furusatoNozei` だけは意味が変わっている。ふるさと納税の正本は `FurusatoDonation`（寄付明細）で、
+この行は**明細に載せていない調整額**（移行前に年間合計だけを登録していた分）を保持する。
+
+### FurusatoDonation（ふるさと納税の寄付明細）
+寄付1件ごとの明細。ふるさと納税の実績はこのテーブルを唯一の正本として扱う。
+
+- `year` は `donatedAt` から**サーバー側で導出**して保存する非正規化カラム（年ごとの集計・絞り込み用）。
+  APIのリクエストでは受け取らない。寄付日を更新したときは `year` も追随させること
+- `oneStopStatus`（ワンストップ特例）: `notApplied` / `applied` / `accepted` / `switchedToTaxReturn`
+- `certificateStatus`（寄附金控除証明書）: `notReceived` / `received` / `notNeeded`
+- `switchedToTaxReturn` かつ `notNeeded` の組み合わせだけは不正（確定申告するなら証明書が要る）。
+  PATCH は送られてこなかった項目が保存済みの値のまま残るため、**更新後の組み合わせで**検証する
+  （`isValidStatusCombination()`）
+- 削除は `deletedAt` による論理削除（`Salary` / `Bonus` と同じ）
+
+**年間のふるさと納税額は 明細合計 + 調整額 で求める**（`getFurusatoDonationSummary()`）。
+移行前のデータは明細が0件なので `effectiveTotal === adjustment` となり、過去年の税計算結果は変わらない。
+両方に金額がある年だけ、確定申告画面で二重計上の注意を表示する。
+
 ### TaxCalculationOverride
 住民税・所得税の計算過程（[annualTax.ts](./src/lib/annualTax.ts) の各ステップ）を、実際の課税決定通知書等の金額で手動上書きするためのテーブル。`field` に計算過程のキー（例: `annualGrossIncome`）を持ち、上書きした値は下流のステップにも反映される。
 
@@ -101,6 +120,9 @@ DELETE       /api/deductions/[id]
 
 GET/POST     /api/tax-calculation-overrides
 DELETE       /api/tax-calculation-overrides/[id]
+
+GET/POST     /api/furusato-donations          GETは ?year= / ?oneStopStatus= / ?certificateStatus= で絞り込み
+PATCH/DELETE /api/furusato-donations/[id]     DELETEは論理削除
 
 GET          /auth/callback               Supabase OAuthコールバック（route.ts）
 ```
@@ -171,6 +193,7 @@ export async function GET(request: Request) {
 - 実装はユーザーのExcel（資産管理.xlsx「税金計算」シート）の数式を再現した簡略版。前提・非対応項目はファイル冒頭のコメントに明記（扶養親族等の数=0人固定、生命保険料控除の3種合計上限は非対応、均等割・森林環境税は全国標準額のみ、税制は令和7年分以降で固定 等）
 - 計算過程の各ステップは `TaxCalculationOverride` で実際の金額に上書き可能（上書きは下流のステップにも反映される）
 - ふるさと納税の控除上限額シミュレーションは当年の給与・賞与見込みから概算する（[furusato-nozei-estimate.tsx](<./src/app/(app)/tax-return/furusato-nozei-estimate.tsx>)）
+- 計算に渡すふるさと納税額は `getFurusatoDonationSummaries()` の `effectiveTotal`（寄付明細の合計 + `Deduction.furusatoNozei` の調整額）。`Deduction.furusatoNozei` を単独で使わないこと
 
 ---
 

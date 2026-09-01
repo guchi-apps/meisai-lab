@@ -172,6 +172,125 @@ export async function getFurusatoNozeiIncomeProjection(
   };
 }
 
+export type FurusatoDonationSummary = {
+  /** 寄付明細の合計額 */
+  total: number;
+  /** 寄付明細の件数 */
+  count: number;
+  /** 寄付先自治体数（重複を除く） */
+  municipalityCount: number;
+  /** ワンストップ特例が未申請の件数 */
+  oneStopPendingCount: number;
+  /** 寄附金控除証明書が未取得の件数 */
+  certificatePendingCount: number;
+  /** 明細に載せていない調整額（移行前の Deduction.furusatoNozei） */
+  adjustment: number;
+  /** 住民税・所得税の計算に使う額。total + adjustment */
+  effectiveTotal: number;
+};
+
+const EMPTY_FURUSATO_SUMMARY: FurusatoDonationSummary = {
+  total: 0,
+  count: 0,
+  municipalityCount: 0,
+  oneStopPendingCount: 0,
+  certificatePendingCount: 0,
+  adjustment: 0,
+  effectiveTotal: 0,
+};
+
+type FurusatoDonationRow = {
+  year: number;
+  amount: unknown;
+  municipality: string;
+  oneStopStatus: string;
+  certificateStatus: string;
+};
+
+function summarizeDonations(
+  donations: FurusatoDonationRow[],
+  adjustment: number
+): FurusatoDonationSummary {
+  const municipalities = new Set<string>();
+  let total = 0;
+  let oneStopPendingCount = 0;
+  let certificatePendingCount = 0;
+
+  for (const d of donations) {
+    total += Number(d.amount);
+    municipalities.add(d.municipality);
+    if (d.oneStopStatus === "notApplied") oneStopPendingCount += 1;
+    if (d.certificateStatus === "notReceived") certificatePendingCount += 1;
+  }
+
+  return {
+    total,
+    count: donations.length,
+    municipalityCount: municipalities.size,
+    oneStopPendingCount,
+    certificatePendingCount,
+    adjustment,
+    effectiveTotal: total + adjustment,
+  };
+}
+
+/**
+ * 複数年のふるさと納税の集計をまとめて取る。
+ *
+ * 寄付明細を正本とし、年間合計は明細から積み上げる。既存の `Deduction.furusatoNozei` は
+ * 「明細に載せていない調整額」として扱い、住民税計算に使う額は 明細合計 + 調整額 とする。
+ * 移行前のデータは明細が0件なので effectiveTotal === adjustment となり、
+ * 過去年の税計算結果は変わらない（#174）。
+ */
+export async function getFurusatoDonationSummaries(
+  userId: string,
+  years: number[]
+): Promise<Record<number, FurusatoDonationSummary>> {
+  if (years.length === 0) return {};
+
+  const [donations, adjustments] = await Promise.all([
+    db.furusatoDonation.findMany({
+      where: { userId, year: { in: years }, deletedAt: null },
+      select: {
+        year: true,
+        amount: true,
+        municipality: true,
+        oneStopStatus: true,
+        certificateStatus: true,
+      },
+    }),
+    db.deduction.findMany({
+      where: { userId, year: { in: years }, deductionType: "furusatoNozei" },
+      select: { year: true, amount: true },
+    }),
+  ]);
+
+  const donationsByYear = new Map<number, FurusatoDonationRow[]>();
+  for (const d of donations) {
+    const group = donationsByYear.get(d.year) ?? [];
+    group.push(d);
+    donationsByYear.set(d.year, group);
+  }
+
+  const adjustmentByYear = new Map<number, number>();
+  for (const a of adjustments) adjustmentByYear.set(a.year, Number(a.amount));
+
+  return Object.fromEntries(
+    years.map((year) => [
+      year,
+      summarizeDonations(donationsByYear.get(year) ?? [], adjustmentByYear.get(year) ?? 0),
+    ])
+  );
+}
+
+export async function getFurusatoDonationSummary(
+  userId: string,
+  year: number
+): Promise<FurusatoDonationSummary> {
+  const summaries = await getFurusatoDonationSummaries(userId, [year]);
+  return summaries[year] ?? EMPTY_FURUSATO_SUMMARY;
+}
+
 export type AnnualTaxEntry = {
   grossIncome: number;
   socialInsuranceTotal: number;
@@ -187,10 +306,11 @@ export async function buildAnnualTaxData(
   userId: string,
   candidateYears: number[]
 ): Promise<Record<number, AnnualTaxEntry>> {
-  const [aggregates, deductions, overridesList] = await Promise.all([
+  const [aggregates, deductions, overridesList, furusatoSummaries] = await Promise.all([
     Promise.all(candidateYears.map((year) => getAnnualAggregate(userId, year))),
     db.deduction.findMany({ where: { userId, year: { in: candidateYears } } }),
     db.taxCalculationOverride.findMany({ where: { userId, year: { in: candidateYears } } }),
+    getFurusatoDonationSummaries(userId, candidateYears),
   ]);
 
   const deductionsByYear = new Map<number, Record<string, number>>();
@@ -219,7 +339,8 @@ export async function buildAnnualTaxData(
           lifeInsuranceGeneral: perType?.lifeInsuranceGeneral ?? 0,
           lifeInsuranceCareMedical: perType?.lifeInsuranceCareMedical ?? 0,
           lifeInsurancePension: perType?.lifeInsurancePension ?? 0,
-          furusatoNozei: perType?.furusatoNozei ?? 0,
+          // 寄付明細の合計 + 調整額。明細が正本のため perType?.furusatoNozei は直接使わない
+          furusatoNozei: furusatoSummaries[year]?.effectiveTotal ?? 0,
           overrides: overridesByYear.get(year) ?? {},
         },
       ];
@@ -228,11 +349,12 @@ export async function buildAnnualTaxData(
 }
 
 export async function getYearsWithTaxReturnData(userId: string): Promise<number[]> {
-  const [salaries, bonuses, deductions, overrides] = await Promise.all([
+  const [salaries, bonuses, deductions, overrides, donations] = await Promise.all([
     db.salary.findMany({ where: { userId, deletedAt: null }, select: { salaryDate: true } }),
     db.bonus.findMany({ where: { userId, deletedAt: null }, select: { bonusDate: true } }),
     db.deduction.findMany({ where: { userId }, select: { year: true } }),
     db.taxCalculationOverride.findMany({ where: { userId }, select: { year: true } }),
+    db.furusatoDonation.findMany({ where: { userId, deletedAt: null }, select: { year: true } }),
   ]);
 
   const years = new Set<number>();
@@ -240,6 +362,7 @@ export async function getYearsWithTaxReturnData(userId: string): Promise<number[
   for (const b of bonuses) years.add(b.bonusDate.getFullYear());
   for (const d of deductions) years.add(d.year);
   for (const o of overrides) years.add(o.year);
+  for (const d of donations) years.add(d.year);
 
   return Array.from(years).sort((a, b) => b - a);
 }

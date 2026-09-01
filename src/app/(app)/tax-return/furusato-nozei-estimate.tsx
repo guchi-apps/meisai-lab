@@ -31,11 +31,14 @@ export function FurusatoNozeiEstimate({
   estimatedGrossIncome: initialEstimatedGrossIncome,
   estimatedSocialInsuranceTotal: initialEstimatedSocialInsuranceTotal,
   amounts,
+  furusatoDonationTotal,
 }: {
   year: number;
   estimatedGrossIncome: number;
   estimatedSocialInsuranceTotal: number;
   amounts: Partial<Record<DeductionType, number>>;
+  /** 寄付明細の合計額。amounts.furusatoNozei は明細に載せていない調整額（#174） */
+  furusatoDonationTotal: number;
 }) {
   const [estimatedGrossIncome, setEstimatedGrossIncome] = useState<number | undefined>(
     initialEstimatedGrossIncome || undefined
@@ -51,7 +54,7 @@ export function FurusatoNozeiEstimate({
       lifeInsuranceGeneral: amounts.lifeInsuranceGeneral ?? 0,
       lifeInsuranceCareMedical: amounts.lifeInsuranceCareMedical ?? 0,
       lifeInsurancePension: amounts.lifeInsurancePension ?? 0,
-      furusatoNozei: amounts.furusatoNozei ?? 0,
+      furusatoNozei: furusatoDonationTotal + (amounts.furusatoNozei ?? 0),
       incomeTaxWithheldTotal: 0,
     });
     return breakdown.furusatoNozeiLimit.value;
@@ -62,6 +65,7 @@ export function FurusatoNozeiEstimate({
     amounts.lifeInsuranceCareMedical,
     amounts.lifeInsurancePension,
     amounts.furusatoNozei,
+    furusatoDonationTotal,
   ]);
 
   return (

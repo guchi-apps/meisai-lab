@@ -5,6 +5,7 @@ import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import {
   getAnnualAggregate,
+  getFurusatoDonationSummaries,
   getFurusatoNozeiIncomeProjection,
   getYearsWithTaxReturnData,
 } from "@/lib/annualTaxData";
@@ -36,12 +37,14 @@ export default async function TaxReturnPage({
   const existingYears = await getYearsWithTaxReturnData(userId);
   const years = Array.from(new Set([...existingYears, requestedYear])).sort((a, b) => b - a);
 
-  const [deductions, overrideRows, aggregates, incomeProjections] = await Promise.all([
-    db.deduction.findMany({ where: { userId, year: { in: years } } }),
-    db.taxCalculationOverride.findMany({ where: { userId, year: { in: years } } }),
-    Promise.all(years.map((year) => getAnnualAggregate(userId, year))),
-    Promise.all(years.map((year) => getFurusatoNozeiIncomeProjection(userId, year))),
-  ]);
+  const [deductions, overrideRows, aggregates, incomeProjections, furusatoSummaries] =
+    await Promise.all([
+      db.deduction.findMany({ where: { userId, year: { in: years } } }),
+      db.taxCalculationOverride.findMany({ where: { userId, year: { in: years } } }),
+      Promise.all(years.map((year) => getAnnualAggregate(userId, year))),
+      Promise.all(years.map((year) => getFurusatoNozeiIncomeProjection(userId, year))),
+      getFurusatoDonationSummaries(userId, years),
+    ]);
 
   const amountsByYear = new Map<number, Partial<Record<DeductionType, number>>>();
   for (const d of deductions) {
@@ -81,6 +84,7 @@ export default async function TaxReturnPage({
       incomeTaxWithheldTotal,
       estimatedGrossIncome,
       estimatedSocialInsuranceTotal,
+      furusato: furusatoSummaries[year],
     };
   });
 
@@ -128,6 +132,7 @@ export default async function TaxReturnPage({
           incomeTaxWithheldTotal,
           estimatedGrossIncome,
           estimatedSocialInsuranceTotal,
+          furusato,
         }) => (
           <Card key={year}>
             <Collapsible defaultOpen={false} className="contents">
@@ -152,6 +157,7 @@ export default async function TaxReturnPage({
                     incomeTaxWithheldTotal={incomeTaxWithheldTotal}
                     estimatedGrossIncome={estimatedGrossIncome}
                     estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal}
+                    furusato={furusato}
                   />
                 </CardContent>
               </CollapsibleContent>

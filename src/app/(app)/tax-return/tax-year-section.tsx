@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { ResidentTaxBreakdownField, ResidentTaxOverrides } from "@/lib/annualTax";
+import type { FurusatoDonationSummary } from "@/lib/annualTaxData";
 import type { DeductionType } from "@/types";
 import { TaxCalculationDetail } from "./tax-calculation-detail";
 import { FurusatoNozeiEstimate } from "./furusato-nozei-estimate";
@@ -17,6 +18,7 @@ export function TaxYearSection({
   incomeTaxWithheldTotal,
   estimatedGrossIncome,
   estimatedSocialInsuranceTotal,
+  furusato,
 }: {
   year: number;
   amounts: Partial<Record<DeductionType, number>>;
@@ -27,6 +29,7 @@ export function TaxYearSection({
   incomeTaxWithheldTotal: number;
   estimatedGrossIncome: number;
   estimatedSocialInsuranceTotal: number;
+  furusato: FurusatoDonationSummary;
 }) {
   const [liveAmounts, setLiveAmounts] = useState(amounts);
 
@@ -37,6 +40,7 @@ export function TaxYearSection({
         estimatedGrossIncome={estimatedGrossIncome}
         estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal}
         amounts={liveAmounts}
+        furusatoDonationTotal={furusato.total}
       />
 
       <div>
@@ -49,6 +53,7 @@ export function TaxYearSection({
           grossIncome={grossIncome}
           socialInsuranceTotal={socialInsuranceTotal}
           incomeTaxWithheldTotal={incomeTaxWithheldTotal}
+          furusato={furusato}
           onAmountsChange={setLiveAmounts}
         />
       </div>
