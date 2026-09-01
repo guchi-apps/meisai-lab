@@ -74,6 +74,25 @@ Process:       PM2（本番）
 ### Deduction（年次控除）
 確定申告・住民税計算で使う年単位の控除額。`deductionType` は `lifeInsuranceGeneral` / `lifeInsuranceCareMedical` / `lifeInsurancePension` / `furusatoNozei`。
 
+`furusatoNozei` だけは意味が変わっている。ふるさと納税の正本は `FurusatoDonation`（寄付明細）で、
+この行は**明細に載せていない調整額**（移行前に年間合計だけを登録していた分）を保持する。
+
+### FurusatoDonation（ふるさと納税の寄付明細）
+寄付1件ごとの明細。ふるさと納税の実績はこのテーブルを唯一の正本として扱う。
+
+- `year` は `donatedAt` から**サーバー側で導出**して保存する非正規化カラム（年ごとの集計・絞り込み用）。
+  APIのリクエストでは受け取らない。寄付日を更新したときは `year` も追随させること
+- `oneStopStatus`（ワンストップ特例）: `notApplied` / `applied` / `accepted` / `switchedToTaxReturn`
+- `certificateStatus`（寄附金控除証明書）: `notReceived` / `received` / `notNeeded`
+- `switchedToTaxReturn` かつ `notNeeded` の組み合わせだけは不正（確定申告するなら証明書が要る）。
+  PATCH は送られてこなかった項目が保存済みの値のまま残るため、**更新後の組み合わせで**検証する
+  （`isValidStatusCombination()`）
+- 削除は `deletedAt` による論理削除（`Salary` / `Bonus` と同じ）
+
+**年間のふるさと納税額は 明細合計 + 調整額 で求める**（`getFurusatoDonationSummary()`）。
+移行前のデータは明細が0件なので `effectiveTotal === adjustment` となり、過去年の税計算結果は変わらない。
+両方に金額がある年だけ、確定申告画面で二重計上の注意を表示する。
+
 ### TaxCalculationOverride
 住民税・所得税の計算過程（[annualTax.ts](./src/lib/annualTax.ts) の各ステップ）を、実際の課税決定通知書等の金額で手動上書きするためのテーブル。`field` に計算過程のキー（例: `annualGrossIncome`）を持ち、上書きした値は下流のステップにも反映される。
 
@@ -101,6 +120,9 @@ DELETE       /api/deductions/[id]
 
 GET/POST     /api/tax-calculation-overrides
 DELETE       /api/tax-calculation-overrides/[id]
+
+GET/POST     /api/furusato-donations          GETは ?year= / ?oneStopStatus= / ?certificateStatus= で絞り込み
+PATCH/DELETE /api/furusato-donations/[id]     DELETEは論理削除
 
 GET          /auth/callback               Supabase OAuthコールバック（route.ts）
 ```
@@ -172,7 +194,7 @@ export async function GET(request: Request) {
 - 計算過程の各ステップは `TaxCalculationOverride` で実際の金額に上書き可能（上書きは下流のステップにも反映される）
 - ふるさと納税の残り枠は当年の給与・賞与見込みから概算する（[furusato-quota-card.tsx](<./src/app/(app)/tax-return/furusato-quota-card.tsx>)）
   - `getFurusatoNozeiIncomeProjection` は見込み年収・見込み社会保険料に加えて、給与の未登録月・賞与の見込み回数・実績だけの合計を返す。カードはこれを使って「どこからが見込みか」を画面に出す
-  - **寄付済額を取り出す唯一の入口は `getFurusatoDonationSummaries`**。現在は年次控除 `Deduction.furusatoNozei` を正としているが、寄付明細（`FurusatoDonation`、#174）が入ったらこの関数の中身だけを明細の合算へ差し替える。画面側はサマリー（`total` / `source` / `donationCount`）しか見ていないため、コンポーネントの変更は要らない
+  - **寄付済額を取り出す唯一の入口は `getFurusatoDonationSummaries`**。寄付明細（`FurusatoDonation`）の合計 + 年次控除 `Deduction.furusatoNozei` の調整額を `effectiveTotal` として返す。画面・税計算はこの `effectiveTotal` を使い、**`Deduction.furusatoNozei` を単独で参照しないこと**（二重計上になる）
   - 上限額は確定値として扱わない。医療費控除・住宅ローン控除・扶養控除が未対応のため、源泉徴収票の値（`annualGrossIncome` / `socialInsuranceTotal` / `incomeTaxWithheldTotal`）を上書きしても「確定確認済み」までで、未対応の控除は画面に出し続ける
   - `TaxCalculationOverride` の上書きとは競合させない。`furusatoNozeiEffective` の上書きがあれば寄付済額はそちらを優先し、年収・社会保険料の上書きはカードの試算欄の初期値になる（試算のためこの2項目だけは `calculateAnnualResidentTax` へ渡す上書きから外す）
 

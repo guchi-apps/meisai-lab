@@ -113,6 +113,7 @@ export function TaxYearSection({
           grossIncome={grossIncome}
           socialInsuranceTotal={socialInsuranceTotal}
           incomeTaxWithheldTotal={incomeTaxWithheldTotal}
+          donationSummary={donationSummary}
           onAmountsChange={setLiveAmounts}
         />
       </div>

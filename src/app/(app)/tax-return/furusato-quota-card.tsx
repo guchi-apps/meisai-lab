@@ -85,13 +85,12 @@ export function FurusatoQuotaCard({
     return rest;
   }, [overrides]);
 
-  // 寄付済額の取得はサーバー側のサマリーを正とする。
-  // 年次控除を正としている間だけ、詳細セクションでの手入力を即座に反映させる。
+  // 寄付済額の取得はサーバー側のサマリーを正とする。寄付明細の合計に、明細に載せていない
+  // 調整額（Deduction.furusatoNozei）を足したものが税計算に使う額（#174）。
+  // 調整額は詳細セクションで手入力できるため、保存前でも即座に反映させる。
+  const liveAdjustment = amounts.furusatoNozei ?? donationSummary.adjustment;
   const donatedAmount =
-    overrides.furusatoNozeiEffective ??
-    (donationSummary.source === "deduction"
-      ? (amounts.furusatoNozei ?? donationSummary.total)
-      : donationSummary.total);
+    overrides.furusatoNozeiEffective ?? donationSummary.total + liveAdjustment;
 
   const calculateLimit = useMemo(
     () => (annualGrossIncome: number, insuranceTotal: number) =>
@@ -189,8 +188,10 @@ export function FurusatoQuotaCard({
             {overrides.furusatoNozeiEffective !== undefined
               ? "「ふるさと納税 計算値」の上書きを使用"
               : donationSummary.source === "donations"
-                ? `寄付明細 ${donationSummary.donationCount ?? 0} 件の合計`
-                : "「ふるさと納税額（年間合計）」の入力を使用"}
+                ? `寄付明細 ${donationSummary.donationCount} 件の合計${
+                    liveAdjustment !== 0 ? ` + 調整額 ${formatYen(liveAdjustment)}` : ""
+                  }`
+                : "「明細に載せていない調整額」の入力を使用"}
           </p>
         </div>
         <div className="order-1 space-y-0.5 bg-accent p-3 text-accent-foreground sm:col-span-2 lg:order-none lg:col-span-1">

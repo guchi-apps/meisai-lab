@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Info } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 
 import {
   calculateAnnualResidentTax,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AutoCalcHint } from "@/components/AutoCalcHint";
+import type { FurusatoDonationSummary } from "@/lib/annualTaxData";
 import type { DeductionType } from "@/types";
 
 type FieldMeta = {
@@ -576,15 +577,19 @@ const SECTIONS: { title: string; fields: FieldMeta[] }[] = [
   },
 ];
 
+// ふるさと納税は寄付明細からの自動集計に置き換わったため、ここには並べない。
+// 調整額（Deduction.furusatoNozei）だけを専用の欄で入力する（#174）。
 const AMOUNT_INPUT_ROWS: { key: DeductionType; label: string; formula?: string }[] = [
   { key: "lifeInsuranceGeneral", label: "一般生命保険料（年間支払額）" },
   { key: "lifeInsuranceCareMedical", label: "介護医療保険料（年間支払額）" },
   { key: "lifeInsurancePension", label: "個人年金保険料（年間支払額）" },
-  {
-    key: "furusatoNozei",
-    label: "ふるさと納税額（年間合計）",
-    formula: "下記「ふるさと納税 計算値」で上書き可能",
-  },
+];
+
+// 「実績データを保存する」で /api/deductions へ送る控除の種類。
+// furusatoNozei は明細に載せていない調整額として保存する
+const SAVED_DEDUCTION_TYPES: DeductionType[] = [
+  ...AMOUNT_INPUT_ROWS.map(({ key }) => key),
+  "furusatoNozei",
 ];
 
 function initialOverrideValues(
@@ -628,6 +633,7 @@ export function TaxCalculationDetail({
   grossIncome,
   socialInsuranceTotal,
   incomeTaxWithheldTotal,
+  donationSummary,
   onAmountsChange,
 }: {
   year: number;
@@ -637,6 +643,7 @@ export function TaxCalculationDetail({
   grossIncome: number;
   socialInsuranceTotal: number;
   incomeTaxWithheldTotal: number;
+  donationSummary: FurusatoDonationSummary;
   onAmountsChange?: (amounts: Partial<Record<DeductionType, number>>) => void;
 }) {
   const router = useRouter();
@@ -647,6 +654,11 @@ export function TaxCalculationDetail({
   const [isLocking, setIsLocking] = useState(false);
 
   const isLocked = RESIDENT_TAX_BREAKDOWN_FIELDS.every((field) => overrideIds[field] !== undefined);
+
+  // 寄付明細が正本。住民税計算に使う額は 明細合計 + 調整額（#174）
+  const furusatoAdjustment = amountValues.furusatoNozei ?? 0;
+  const furusatoEffectiveTotal = donationSummary.total + furusatoAdjustment;
+  const hasDoubleCountRisk = donationSummary.total > 0 && furusatoAdjustment > 0;
 
   useEffect(() => {
     onAmountsChange?.(amountValues);
@@ -662,7 +674,7 @@ export function TaxCalculationDetail({
           lifeInsuranceGeneral: amountValues.lifeInsuranceGeneral ?? 0,
           lifeInsuranceCareMedical: amountValues.lifeInsuranceCareMedical ?? 0,
           lifeInsurancePension: amountValues.lifeInsurancePension ?? 0,
-          furusatoNozei: amountValues.furusatoNozei ?? 0,
+          furusatoNozei: furusatoEffectiveTotal,
           incomeTaxWithheldTotal,
         },
         values
@@ -674,7 +686,7 @@ export function TaxCalculationDetail({
       amountValues.lifeInsuranceGeneral,
       amountValues.lifeInsuranceCareMedical,
       amountValues.lifeInsurancePension,
-      amountValues.furusatoNozei,
+      furusatoEffectiveTotal,
       values,
     ]
   );
@@ -691,7 +703,7 @@ export function TaxCalculationDetail({
     setIsSavingAmounts(true);
     try {
       const results = await Promise.all(
-        AMOUNT_INPUT_ROWS.map(({ key }) =>
+        SAVED_DEDUCTION_TYPES.map((key) =>
           fetch("/api/deductions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -831,6 +843,54 @@ export function TaxCalculationDetail({
             />
           </div>
         ))}
+        <div className="space-y-1.5">
+          <Label>ふるさと納税額（年間合計）</Label>
+          <div className="flex items-center justify-between gap-2 rounded-md border border-dashed bg-muted px-3 py-2">
+            <span className="text-base font-semibold tabular-nums">
+              {donationSummary.total.toLocaleString()} 円
+            </span>
+            <span className="text-xs text-muted-foreground">寄付明細 {donationSummary.donationCount}件</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            寄付明細から自動集計しています。金額を直すには寄付明細を編集してください。
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={`furusatoNozei-${year}`}>明細に載せていない調整額</Label>
+          <AmountInput
+            id={`furusatoNozei-${year}`}
+            value={amountValues.furusatoNozei}
+            onChange={(value) => handleAmountChange("furusatoNozei", value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            移行前に年間合計だけを登録していた分です。明細を登録した年は0にしてください。
+          </p>
+        </div>
+
+        {hasDoubleCountRisk && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-destructive">
+                二重計上になっていないか確認してください
+              </p>
+              <p className="text-xs">
+                {year}年は寄付明細の合計 {donationSummary.total.toLocaleString()}円 と、調整額{" "}
+                {furusatoAdjustment.toLocaleString()}円 の両方に金額があります。
+                明細に載せた寄付が調整額にも含まれている場合は、調整額から差し引いてください。
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-baseline justify-between border-t pt-3">
+          <span className="text-sm">住民税計算に使う額</span>
+          <span className="text-lg font-semibold tabular-nums">
+            {furusatoEffectiveTotal.toLocaleString()} 円
+          </span>
+        </div>
+
         <Button type="button" onClick={handleSaveAmounts} disabled={isSavingAmounts}>
           実績データを保存する
         </Button>

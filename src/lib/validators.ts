@@ -83,3 +83,56 @@ export const LockTaxCalculationSchema = z.object({
   values: z.record(z.string(), z.number()),
 });
 export type LockTaxCalculation = z.infer<typeof LockTaxCalculationSchema>;
+
+export const OneStopStatusEnum = z.enum([
+  "notApplied",
+  "applied",
+  "accepted",
+  "switchedToTaxReturn",
+]);
+export const CertificateStatusEnum = z.enum(["notReceived", "received", "notNeeded"]);
+
+const furusatoDonationFields = z.object({
+  donatedAt: z.string().datetime("無効な日付形式"),
+  municipality: z.string().min(1, "自治体名は必須").max(100),
+  amount: z.number().positive("寄付額は0より大きい数値が必須"),
+  returnItem: z.string().max(200).optional(),
+  category: z.string().max(50).optional(),
+  portalSite: z.string().max(50).optional(),
+  oneStopStatus: OneStopStatusEnum.optional(),
+  certificateStatus: CertificateStatusEnum.optional(),
+  memo: z.string().optional(),
+});
+
+// ワンストップ特例をやめて確定申告に切り替える場合、寄附金控除証明書は必ず要る。
+// 「確定申告へ切替」なのに証明書が「不要（ワンストップ）」という組み合わせだけを弾く。
+// PATCH は送られてこなかった項目を保存済みの値で埋めてから検証する必要があるため、
+// スキーマではなく assertStatusCombination() をルート側で呼ぶ。
+export function isValidStatusCombination(
+  oneStopStatus: string,
+  certificateStatus: string
+): boolean {
+  return !(oneStopStatus === "switchedToTaxReturn" && certificateStatus === "notNeeded");
+}
+
+export const STATUS_COMBINATION_MESSAGE =
+  "確定申告へ切替の場合、証明書を「不要（ワンストップ）」にはできません";
+
+export const CreateFurusatoDonationSchema = furusatoDonationFields.superRefine((value, ctx) => {
+  if (
+    !isValidStatusCombination(
+      value.oneStopStatus ?? "notApplied",
+      value.certificateStatus ?? "notReceived"
+    )
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["certificateStatus"],
+      message: STATUS_COMBINATION_MESSAGE,
+    });
+  }
+});
+export type CreateFurusatoDonation = z.infer<typeof CreateFurusatoDonationSchema>;
+
+export const UpdateFurusatoDonationSchema = furusatoDonationFields.partial();
+export type UpdateFurusatoDonation = z.infer<typeof UpdateFurusatoDonationSchema>;
