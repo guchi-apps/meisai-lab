@@ -633,7 +633,7 @@ export function TaxCalculationDetail({
   grossIncome,
   socialInsuranceTotal,
   incomeTaxWithheldTotal,
-  furusato,
+  donationSummary,
   onAmountsChange,
 }: {
   year: number;
@@ -643,7 +643,7 @@ export function TaxCalculationDetail({
   grossIncome: number;
   socialInsuranceTotal: number;
   incomeTaxWithheldTotal: number;
-  furusato: FurusatoDonationSummary;
+  donationSummary: FurusatoDonationSummary;
   onAmountsChange?: (amounts: Partial<Record<DeductionType, number>>) => void;
 }) {
   const router = useRouter();
@@ -657,8 +657,8 @@ export function TaxCalculationDetail({
 
   // 寄付明細が正本。住民税計算に使う額は 明細合計 + 調整額（#174）
   const furusatoAdjustment = amountValues.furusatoNozei ?? 0;
-  const furusatoEffectiveTotal = furusato.total + furusatoAdjustment;
-  const hasDoubleCountRisk = furusato.total > 0 && furusatoAdjustment > 0;
+  const furusatoEffectiveTotal = donationSummary.total + furusatoAdjustment;
+  const hasDoubleCountRisk = donationSummary.total > 0 && furusatoAdjustment > 0;
 
   useEffect(() => {
     onAmountsChange?.(amountValues);
@@ -847,9 +847,9 @@ export function TaxCalculationDetail({
           <Label>ふるさと納税額（年間合計）</Label>
           <div className="flex items-center justify-between gap-2 rounded-md border border-dashed bg-muted px-3 py-2">
             <span className="text-base font-semibold tabular-nums">
-              {furusato.total.toLocaleString()} 円
+              {donationSummary.total.toLocaleString()} 円
             </span>
-            <span className="text-xs text-muted-foreground">寄付明細 {furusato.count}件</span>
+            <span className="text-xs text-muted-foreground">寄付明細 {donationSummary.donationCount}件</span>
           </div>
           <p className="text-xs text-muted-foreground">
             寄付明細から自動集計しています。金額を直すには寄付明細を編集してください。
@@ -876,7 +876,7 @@ export function TaxCalculationDetail({
                 二重計上になっていないか確認してください
               </p>
               <p className="text-xs">
-                {year}年は寄付明細の合計 {furusato.total.toLocaleString()}円 と、調整額{" "}
+                {year}年は寄付明細の合計 {donationSummary.total.toLocaleString()}円 と、調整額{" "}
                 {furusatoAdjustment.toLocaleString()}円 の両方に金額があります。
                 明細に載せた寄付が調整額にも含まれている場合は、調整額から差し引いてください。
               </p>
