@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 import type { ResidentTaxBreakdownField, ResidentTaxOverrides } from "@/lib/annualTax";
+import type { FurusatoDonationSummary, FurusatoNozeiIncomeProjection } from "@/lib/annualTaxData";
 import type { DeductionType } from "@/types";
 import { TaxCalculationDetail } from "./tax-calculation-detail";
-import { FurusatoNozeiEstimate } from "./furusato-nozei-estimate";
+import { FurusatoQuotaCard } from "./furusato-quota-card";
 
 export function TaxYearSection({
   year,
@@ -15,8 +16,8 @@ export function TaxYearSection({
   grossIncome,
   socialInsuranceTotal,
   incomeTaxWithheldTotal,
-  estimatedGrossIncome,
-  estimatedSocialInsuranceTotal,
+  projection,
+  donationSummary,
 }: {
   year: number;
   amounts: Partial<Record<DeductionType, number>>;
@@ -25,18 +26,28 @@ export function TaxYearSection({
   grossIncome: number;
   socialInsuranceTotal: number;
   incomeTaxWithheldTotal: number;
-  estimatedGrossIncome: number;
-  estimatedSocialInsuranceTotal: number;
+  projection: FurusatoNozeiIncomeProjection;
+  donationSummary: FurusatoDonationSummary;
 }) {
   const [liveAmounts, setLiveAmounts] = useState(amounts);
 
+  // 残り枠カードの「源泉徴収票の値を入力して確定する」から、計算過程の「給与」の入力欄へ送る
+  function goToWithholdingInput() {
+    const input = document.getElementById(`annualGrossIncome-${year}`);
+    if (!(input instanceof HTMLInputElement)) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus({ preventScroll: true });
+  }
+
   return (
     <div className="space-y-6">
-      <FurusatoNozeiEstimate
+      <FurusatoQuotaCard
         year={year}
-        estimatedGrossIncome={estimatedGrossIncome}
-        estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal}
+        projection={projection}
+        donationSummary={donationSummary}
         amounts={liveAmounts}
+        overrides={overrides}
+        onGoToWithholdingInput={goToWithholdingInput}
       />
 
       <div>

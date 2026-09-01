@@ -5,6 +5,7 @@ import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import {
   getAnnualAggregate,
+  getFurusatoDonationSummaries,
   getFurusatoNozeiIncomeProjection,
   getYearsWithTaxReturnData,
 } from "@/lib/annualTaxData";
@@ -36,12 +37,14 @@ export default async function TaxReturnPage({
   const existingYears = await getYearsWithTaxReturnData(userId);
   const years = Array.from(new Set([...existingYears, requestedYear])).sort((a, b) => b - a);
 
-  const [deductions, overrideRows, aggregates, incomeProjections] = await Promise.all([
-    db.deduction.findMany({ where: { userId, year: { in: years } } }),
-    db.taxCalculationOverride.findMany({ where: { userId, year: { in: years } } }),
-    Promise.all(years.map((year) => getAnnualAggregate(userId, year))),
-    Promise.all(years.map((year) => getFurusatoNozeiIncomeProjection(userId, year))),
-  ]);
+  const [deductions, overrideRows, aggregates, incomeProjections, donationSummaries] =
+    await Promise.all([
+      db.deduction.findMany({ where: { userId, year: { in: years } } }),
+      db.taxCalculationOverride.findMany({ where: { userId, year: { in: years } } }),
+      Promise.all(years.map((year) => getAnnualAggregate(userId, year))),
+      Promise.all(years.map((year) => getFurusatoNozeiIncomeProjection(userId, year))),
+      getFurusatoDonationSummaries(userId, years),
+    ]);
 
   const amountsByYear = new Map<number, Partial<Record<DeductionType, number>>>();
   for (const d of deductions) {
@@ -66,7 +69,6 @@ export default async function TaxReturnPage({
   const yearBlocks = years.map((year, i) => {
     const amounts = amountsByYear.get(year) ?? {};
     const { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal } = aggregates[i];
-    const { estimatedGrossIncome, estimatedSocialInsuranceTotal } = incomeProjections[i];
     const overrides = overridesByYear.get(year) ?? {};
     const overrideIds = overrideIdsByYear.get(year) ?? {};
     const isLocked = RESIDENT_TAX_BREAKDOWN_FIELDS.every((field) => overrideIds[field] !== undefined);
@@ -79,8 +81,8 @@ export default async function TaxReturnPage({
       grossIncome,
       socialInsuranceTotal,
       incomeTaxWithheldTotal,
-      estimatedGrossIncome,
-      estimatedSocialInsuranceTotal,
+      projection: incomeProjections[i],
+      donationSummary: donationSummaries[year],
     };
   });
 
@@ -126,8 +128,8 @@ export default async function TaxReturnPage({
           grossIncome,
           socialInsuranceTotal,
           incomeTaxWithheldTotal,
-          estimatedGrossIncome,
-          estimatedSocialInsuranceTotal,
+          projection,
+          donationSummary,
         }) => (
           <Card key={year}>
             <Collapsible defaultOpen={false} className="contents">
@@ -150,8 +152,8 @@ export default async function TaxReturnPage({
                     grossIncome={grossIncome}
                     socialInsuranceTotal={socialInsuranceTotal}
                     incomeTaxWithheldTotal={incomeTaxWithheldTotal}
-                    estimatedGrossIncome={estimatedGrossIncome}
-                    estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal}
+                    projection={projection}
+                    donationSummary={donationSummary}
                   />
                 </CardContent>
               </CollapsibleContent>
