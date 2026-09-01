@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 import type { ResidentTaxBreakdownField, ResidentTaxOverrides } from "@/lib/annualTax";
+import type { FurusatoDonationSummary, FurusatoNozeiIncomeProjection } from "@/lib/annualTaxData";
 import type { DeductionType } from "@/types";
 import { TaxCalculationDetail } from "./tax-calculation-detail";
-import { FurusatoNozeiEstimate } from "./furusato-nozei-estimate";
+import { FurusatoQuotaCard } from "./furusato-quota-card";
 import { ChatGptSnapshotDialog } from "./chatgpt-snapshot-dialog";
 
 export function TaxYearSection({
@@ -19,10 +20,8 @@ export function TaxYearSection({
   incomeTaxWithheldTotal,
   salaryCount,
   bonusCount,
-  estimatedGrossIncome,
-  estimatedSocialInsuranceTotal,
-  projectedSalaryMonths,
-  projectedBonusMonths,
+  projection,
+  donationSummary,
 }: {
   year: number;
   amounts: Partial<Record<DeductionType, number>>;
@@ -34,29 +33,58 @@ export function TaxYearSection({
   incomeTaxWithheldTotal: number;
   salaryCount: number;
   bonusCount: number;
-  estimatedGrossIncome: number;
-  estimatedSocialInsuranceTotal: number;
-  projectedSalaryMonths: number;
-  projectedBonusMonths: number[];
+  projection: FurusatoNozeiIncomeProjection;
+  donationSummary: FurusatoDonationSummary;
 }) {
   const [liveAmounts, setLiveAmounts] = useState(amounts);
-  // 上限額の試算欄で書き換えた見込み値は、ChatGPT相談用スナップショットの上限額にも使う
-  const [liveGrossIncome, setLiveGrossIncome] = useState<number | undefined>(
-    estimatedGrossIncome || undefined
+
+  // 源泉徴収票の値で上書き済みならそちらを、まだなら実績＋見込みの推定値を初期値にする。
+  // 残り枠カードの試算欄とChatGPT相談用スナップショットの両方が同じ見込み値を参照するため、
+  // 試算の状態はこのコンポーネントで一元管理する
+  const baseGrossIncome = overrides.annualGrossIncome ?? projection.estimatedGrossIncome;
+  const baseSocialInsuranceTotal =
+    overrides.socialInsuranceTotal ?? projection.estimatedSocialInsuranceTotal;
+
+  const [estimatedGrossIncome, setEstimatedGrossIncome] = useState<number | undefined>(
+    baseGrossIncome || undefined
   );
-  const [liveSocialInsuranceTotal, setLiveSocialInsuranceTotal] = useState<number | undefined>(
-    estimatedSocialInsuranceTotal || undefined
-  );
+  const [estimatedSocialInsuranceTotal, setEstimatedSocialInsuranceTotal] = useState<
+    number | undefined
+  >(baseSocialInsuranceTotal || undefined);
+
+  // 源泉徴収票の値を保存した直後など、サーバー側の初期値が変わったら試算欄も追従させる
+  // （props の変化に合わせて state を作り直すため、レンダー中に直接更新する）
+  const [baseValues, setBaseValues] = useState({ baseGrossIncome, baseSocialInsuranceTotal });
+  if (
+    baseValues.baseGrossIncome !== baseGrossIncome ||
+    baseValues.baseSocialInsuranceTotal !== baseSocialInsuranceTotal
+  ) {
+    setBaseValues({ baseGrossIncome, baseSocialInsuranceTotal });
+    setEstimatedGrossIncome(baseGrossIncome || undefined);
+    setEstimatedSocialInsuranceTotal(baseSocialInsuranceTotal || undefined);
+  }
+
+  // 残り枠カードの「源泉徴収票の値を入力して確定する」から、計算過程の「給与」の入力欄へ送る
+  function goToWithholdingInput() {
+    const input = document.getElementById(`annualGrossIncome-${year}`);
+    if (!(input instanceof HTMLInputElement)) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus({ preventScroll: true });
+  }
 
   return (
     <div className="space-y-6">
-      <FurusatoNozeiEstimate
+      <FurusatoQuotaCard
         year={year}
-        estimatedGrossIncome={liveGrossIncome}
-        estimatedSocialInsuranceTotal={liveSocialInsuranceTotal}
-        onEstimatedGrossIncomeChange={setLiveGrossIncome}
-        onEstimatedSocialInsuranceTotalChange={setLiveSocialInsuranceTotal}
+        projection={projection}
+        donationSummary={donationSummary}
         amounts={liveAmounts}
+        overrides={overrides}
+        grossIncome={estimatedGrossIncome}
+        socialInsuranceTotal={estimatedSocialInsuranceTotal}
+        onGrossIncomeChange={setEstimatedGrossIncome}
+        onSocialInsuranceTotalChange={setEstimatedSocialInsuranceTotal}
+        onGoToWithholdingInput={goToWithholdingInput}
       />
 
       <ChatGptSnapshotDialog
@@ -67,10 +95,10 @@ export function TaxYearSection({
         incomeTaxWithheldTotal={incomeTaxWithheldTotal}
         salaryCount={salaryCount}
         bonusCount={bonusCount}
-        estimatedGrossIncome={liveGrossIncome ?? 0}
-        estimatedSocialInsuranceTotal={liveSocialInsuranceTotal ?? 0}
-        projectedSalaryMonths={projectedSalaryMonths}
-        projectedBonusMonths={projectedBonusMonths}
+        estimatedGrossIncome={estimatedGrossIncome ?? 0}
+        estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal ?? 0}
+        projectedSalaryMonths={projection.projectedSalaryMonthCount}
+        projectedBonusMonths={projection.projectedBonusMonths}
         amounts={liveAmounts}
         overrides={overrides}
       />
