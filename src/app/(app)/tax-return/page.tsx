@@ -68,7 +68,8 @@ export default async function TaxReturnPage({
 
   const yearBlocks = years.map((year, i) => {
     const amounts = amountsByYear.get(year) ?? {};
-    const { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal } = aggregates[i];
+    const { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal, salaryCount, bonusCount } =
+      aggregates[i];
     const overrides = overridesByYear.get(year) ?? {};
     const overrideIds = overrideIdsByYear.get(year) ?? {};
     const isLocked = RESIDENT_TAX_BREAKDOWN_FIELDS.every((field) => overrideIds[field] !== undefined);
@@ -81,6 +82,8 @@ export default async function TaxReturnPage({
       grossIncome,
       socialInsuranceTotal,
       incomeTaxWithheldTotal,
+      salaryCount,
+      bonusCount,
       projection: incomeProjections[i],
       donationSummary: donationSummaries[year],
     };
@@ -128,6 +131,8 @@ export default async function TaxReturnPage({
           grossIncome,
           socialInsuranceTotal,
           incomeTaxWithheldTotal,
+          salaryCount,
+          bonusCount,
           projection,
           donationSummary,
         }) => (
@@ -149,9 +154,12 @@ export default async function TaxReturnPage({
                     amounts={amounts}
                     overrides={overrides}
                     overrideIds={overrideIds}
+                    isLocked={isLocked}
                     grossIncome={grossIncome}
                     socialInsuranceTotal={socialInsuranceTotal}
                     incomeTaxWithheldTotal={incomeTaxWithheldTotal}
+                    salaryCount={salaryCount}
+                    bonusCount={bonusCount}
                     projection={projection}
                     donationSummary={donationSummary}
                   />

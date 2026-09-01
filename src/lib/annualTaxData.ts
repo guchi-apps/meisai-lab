@@ -56,7 +56,13 @@ async function getNonTaxableEarningItemIds(userId: string): Promise<Set<string>>
 export async function getAnnualAggregate(
   userId: string,
   year: number
-): Promise<{ grossIncome: number; socialInsuranceTotal: number; incomeTaxWithheldTotal: number }> {
+): Promise<{
+  grossIncome: number;
+  socialInsuranceTotal: number;
+  incomeTaxWithheldTotal: number;
+  salaryCount: number;
+  bonusCount: number;
+}> {
   const gte = new Date(`${year}-01-01`);
   const lt = new Date(`${year + 1}-01-01`);
 
@@ -100,7 +106,13 @@ export async function getAnnualAggregate(
     bonuses.reduce((sum, r) => sum + sumAbsField(r.data, "incomeTax"), 0) -
     incomeTaxAdjustmentTotal;
 
-  return { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal };
+  return {
+    grossIncome,
+    socialInsuranceTotal,
+    incomeTaxWithheldTotal,
+    salaryCount: salaries.length,
+    bonusCount: bonuses.length,
+  };
 }
 
 // ふるさと納税の残り枠カードで「どこまでが実績で、どこからが見込みか」を画面に出すための内訳。

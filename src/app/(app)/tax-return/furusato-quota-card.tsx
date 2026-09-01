@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { calculateAnnualResidentTax, type ResidentTaxOverrides } from "@/lib/annualTax";
@@ -52,6 +52,10 @@ export function FurusatoQuotaCard({
   donationSummary,
   amounts,
   overrides,
+  grossIncome,
+  socialInsuranceTotal,
+  onGrossIncomeChange,
+  onSocialInsuranceTotalChange,
   onGoToWithholdingInput,
 }: {
   year: number;
@@ -59,29 +63,18 @@ export function FurusatoQuotaCard({
   donationSummary: FurusatoDonationSummary;
   amounts: Partial<Record<DeductionType, number>>;
   overrides: ResidentTaxOverrides;
+  // 年収・社会保険料の試算欄の値。ChatGPT相談用スナップショットとも共有するため、
+  // 状態は呼び出し元（TaxYearSection）が持つ
+  grossIncome: number | undefined;
+  socialInsuranceTotal: number | undefined;
+  onGrossIncomeChange: (value: number | undefined) => void;
+  onSocialInsuranceTotalChange: (value: number | undefined) => void;
   onGoToWithholdingInput: () => void;
 }) {
   // 源泉徴収票の値で上書き済みならそちらを、まだなら実績＋見込みの推定値を初期値にする
   const baseGrossIncome = overrides.annualGrossIncome ?? projection.estimatedGrossIncome;
   const baseSocialInsuranceTotal =
     overrides.socialInsuranceTotal ?? projection.estimatedSocialInsuranceTotal;
-
-  const [grossIncome, setGrossIncome] = useState<number | undefined>(baseGrossIncome || undefined);
-  const [socialInsuranceTotal, setSocialInsuranceTotal] = useState<number | undefined>(
-    baseSocialInsuranceTotal || undefined
-  );
-
-  // 源泉徴収票の値を保存した直後など、サーバー側の初期値が変わったら試算欄も追従させる
-  // （props の変化に合わせて state を作り直すため、レンダー中に直接更新する）
-  const [baseValues, setBaseValues] = useState({ baseGrossIncome, baseSocialInsuranceTotal });
-  if (
-    baseValues.baseGrossIncome !== baseGrossIncome ||
-    baseValues.baseSocialInsuranceTotal !== baseSocialInsuranceTotal
-  ) {
-    setBaseValues({ baseGrossIncome, baseSocialInsuranceTotal });
-    setGrossIncome(baseGrossIncome || undefined);
-    setSocialInsuranceTotal(baseSocialInsuranceTotal || undefined);
-  }
 
   // 年収・社会保険料はこのカードの入力欄で試算するため、手入力の上書きからは外して渡す。
   // それ以外の上書き（ふるさと納税上限そのものの上書きなど）は尊重する。
@@ -333,7 +326,7 @@ export function FurusatoQuotaCard({
             <Label htmlFor={`quota-gross-${year}`} className="text-xs text-muted-foreground">
               見込み年収（給与・賞与の合計）
             </Label>
-            <AmountInput id={`quota-gross-${year}`} value={grossIncome} onChange={setGrossIncome} />
+            <AmountInput id={`quota-gross-${year}`} value={grossIncome} onChange={onGrossIncomeChange} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`quota-insurance-${year}`} className="text-xs text-muted-foreground">
@@ -342,7 +335,7 @@ export function FurusatoQuotaCard({
             <AmountInput
               id={`quota-insurance-${year}`}
               value={socialInsuranceTotal}
-              onChange={setSocialInsuranceTotal}
+              onChange={onSocialInsuranceTotalChange}
             />
           </div>
         </div>
@@ -370,8 +363,8 @@ export function FurusatoQuotaCard({
               size="sm"
               className="h-auto p-0 text-xs"
               onClick={() => {
-                setGrossIncome(baseGrossIncome || undefined);
-                setSocialInsuranceTotal(baseSocialInsuranceTotal || undefined);
+                onGrossIncomeChange(baseGrossIncome || undefined);
+                onSocialInsuranceTotalChange(baseSocialInsuranceTotal || undefined);
               }}
             >
               初期値に戻す
