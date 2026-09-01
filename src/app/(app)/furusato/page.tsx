@@ -121,8 +121,8 @@ export default async function FurusatoPage({
           unit="円"
           note={
             summary.adjustment === 0
-              ? `寄付明細${summary.count}件の合計`
-              : `明細${summary.count}件 ${Math.round(summary.total).toLocaleString()}円 ＋ 調整額 ${Math.round(summary.adjustment).toLocaleString()}円`
+              ? `寄付明細${summary.donationCount}件の合計`
+              : `明細${summary.donationCount}件 ${Math.round(summary.total).toLocaleString()}円 ＋ 調整額 ${Math.round(summary.adjustment).toLocaleString()}円`
           }
           tone="primary"
         />
@@ -166,7 +166,7 @@ export default async function FurusatoPage({
               {overMunicipalityLimit
                 ? `${selectedYear}年分は寄付先が${summary.municipalityCount}自治体あり、ワンストップ特例の上限（${ONE_STOP_MUNICIPALITY_LIMIT}自治体）を超えています。`
                 : `${selectedYear}年分には「確定申告へ切替」の寄付が${switchedToTaxReturnCount}件あります。`}
-              受付済みの分も含めて、この年の寄付{summary.count}件すべてを確定申告で申告してください。
+              受付済みの分も含めて、この年の寄付{summary.donationCount}件すべてを確定申告で申告してください。
               一部だけをワンストップ特例で処理することはできません。
             </p>
             {summary.certificatePendingCount > 0 && (
