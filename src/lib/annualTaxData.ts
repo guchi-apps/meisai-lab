@@ -56,7 +56,13 @@ async function getNonTaxableEarningItemIds(userId: string): Promise<Set<string>>
 export async function getAnnualAggregate(
   userId: string,
   year: number
-): Promise<{ grossIncome: number; socialInsuranceTotal: number; incomeTaxWithheldTotal: number }> {
+): Promise<{
+  grossIncome: number;
+  socialInsuranceTotal: number;
+  incomeTaxWithheldTotal: number;
+  salaryCount: number;
+  bonusCount: number;
+}> {
   const gte = new Date(`${year}-01-01`);
   const lt = new Date(`${year + 1}-01-01`);
 
@@ -100,7 +106,13 @@ export async function getAnnualAggregate(
     bonuses.reduce((sum, r) => sum + sumAbsField(r.data, "incomeTax"), 0) -
     incomeTaxAdjustmentTotal;
 
-  return { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal };
+  return {
+    grossIncome,
+    socialInsuranceTotal,
+    incomeTaxWithheldTotal,
+    salaryCount: salaries.length,
+    bonusCount: bonuses.length,
+  };
 }
 
 // ふるさと納税上限額の見込み計算用に、その年の残り月分の給与・賞与を推定する。
@@ -110,7 +122,14 @@ export async function getAnnualAggregate(
 export async function getFurusatoNozeiIncomeProjection(
   userId: string,
   year: number
-): Promise<{ estimatedGrossIncome: number; estimatedSocialInsuranceTotal: number }> {
+): Promise<{
+  estimatedGrossIncome: number;
+  estimatedSocialInsuranceTotal: number;
+  /** 見込みで補った給与の月数 */
+  projectedSalaryMonths: number;
+  /** 前年同月の実績から見込んだ賞与の月（1〜12） */
+  projectedBonusMonths: number[];
+}> {
   const gte = new Date(`${year}-01-01`);
   const lt = new Date(`${year + 1}-01-01`);
   const prevGte = new Date(`${year - 1}-01-01`);
@@ -159,16 +178,21 @@ export async function getFurusatoNozeiIncomeProjection(
   const enteredBonusMonths = new Set(bonuses.map((b) => b.bonusDate.getMonth() + 1));
   let estimatedBonusGross = bonuses.reduce((sum, b) => sum + taxableGross(Number(b.amount), b.data), 0);
   let estimatedBonusInsurance = bonuses.reduce((sum, b) => sum + insuranceFromData(b.data), 0);
+  const projectedBonusMonths: number[] = [];
 
   for (const prevBonus of prevBonuses) {
-    if (enteredBonusMonths.has(prevBonus.bonusDate.getMonth() + 1)) continue;
+    const month = prevBonus.bonusDate.getMonth() + 1;
+    if (enteredBonusMonths.has(month)) continue;
     estimatedBonusGross += taxableGross(Number(prevBonus.amount), prevBonus.data);
     estimatedBonusInsurance += insuranceFromData(prevBonus.data);
+    projectedBonusMonths.push(month);
   }
 
   return {
     estimatedGrossIncome: Math.round(estimatedSalaryGross + estimatedBonusGross),
     estimatedSocialInsuranceTotal: Math.round(estimatedSalaryInsurance + estimatedBonusInsurance),
+    projectedSalaryMonths: salaries.length > 0 ? remainingMonths : 0,
+    projectedBonusMonths: projectedBonusMonths.sort((a, b) => a - b),
   };
 }
 
