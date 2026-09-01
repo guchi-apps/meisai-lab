@@ -65,8 +65,14 @@ export default async function TaxReturnPage({
 
   const yearBlocks = years.map((year, i) => {
     const amounts = amountsByYear.get(year) ?? {};
-    const { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal } = aggregates[i];
-    const { estimatedGrossIncome, estimatedSocialInsuranceTotal } = incomeProjections[i];
+    const { grossIncome, socialInsuranceTotal, incomeTaxWithheldTotal, salaryCount, bonusCount } =
+      aggregates[i];
+    const {
+      estimatedGrossIncome,
+      estimatedSocialInsuranceTotal,
+      projectedSalaryMonths,
+      projectedBonusMonths,
+    } = incomeProjections[i];
     const overrides = overridesByYear.get(year) ?? {};
     const overrideIds = overrideIdsByYear.get(year) ?? {};
     const isLocked = RESIDENT_TAX_BREAKDOWN_FIELDS.every((field) => overrideIds[field] !== undefined);
@@ -79,8 +85,12 @@ export default async function TaxReturnPage({
       grossIncome,
       socialInsuranceTotal,
       incomeTaxWithheldTotal,
+      salaryCount,
+      bonusCount,
       estimatedGrossIncome,
       estimatedSocialInsuranceTotal,
+      projectedSalaryMonths,
+      projectedBonusMonths,
     };
   });
 
@@ -126,8 +136,12 @@ export default async function TaxReturnPage({
           grossIncome,
           socialInsuranceTotal,
           incomeTaxWithheldTotal,
+          salaryCount,
+          bonusCount,
           estimatedGrossIncome,
           estimatedSocialInsuranceTotal,
+          projectedSalaryMonths,
+          projectedBonusMonths,
         }) => (
           <Card key={year}>
             <Collapsible defaultOpen={false} className="contents">
@@ -147,11 +161,16 @@ export default async function TaxReturnPage({
                     amounts={amounts}
                     overrides={overrides}
                     overrideIds={overrideIds}
+                    isLocked={isLocked}
                     grossIncome={grossIncome}
                     socialInsuranceTotal={socialInsuranceTotal}
                     incomeTaxWithheldTotal={incomeTaxWithheldTotal}
+                    salaryCount={salaryCount}
+                    bonusCount={bonusCount}
                     estimatedGrossIncome={estimatedGrossIncome}
                     estimatedSocialInsuranceTotal={estimatedSocialInsuranceTotal}
+                    projectedSalaryMonths={projectedSalaryMonths}
+                    projectedBonusMonths={projectedBonusMonths}
                   />
                 </CardContent>
               </CollapsibleContent>

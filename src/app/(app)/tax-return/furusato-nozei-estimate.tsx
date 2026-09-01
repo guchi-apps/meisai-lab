@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Info } from "lucide-react";
 
 import { calculateAnnualResidentTax } from "@/lib/annualTax";
@@ -28,22 +28,19 @@ function FormulaInfo({ formula }: { formula: string }) {
 
 export function FurusatoNozeiEstimate({
   year,
-  estimatedGrossIncome: initialEstimatedGrossIncome,
-  estimatedSocialInsuranceTotal: initialEstimatedSocialInsuranceTotal,
+  estimatedGrossIncome,
+  estimatedSocialInsuranceTotal,
+  onEstimatedGrossIncomeChange: setEstimatedGrossIncome,
+  onEstimatedSocialInsuranceTotalChange: setEstimatedSocialInsuranceTotal,
   amounts,
 }: {
   year: number;
-  estimatedGrossIncome: number;
-  estimatedSocialInsuranceTotal: number;
+  estimatedGrossIncome: number | undefined;
+  estimatedSocialInsuranceTotal: number | undefined;
+  onEstimatedGrossIncomeChange: (value: number | undefined) => void;
+  onEstimatedSocialInsuranceTotalChange: (value: number | undefined) => void;
   amounts: Partial<Record<DeductionType, number>>;
 }) {
-  const [estimatedGrossIncome, setEstimatedGrossIncome] = useState<number | undefined>(
-    initialEstimatedGrossIncome || undefined
-  );
-  const [estimatedSocialInsuranceTotal, setEstimatedSocialInsuranceTotal] = useState<
-    number | undefined
-  >(initialEstimatedSocialInsuranceTotal || undefined);
-
   const limit = useMemo(() => {
     const breakdown = calculateAnnualResidentTax({
       annualGrossIncome: estimatedGrossIncome ?? 0,
