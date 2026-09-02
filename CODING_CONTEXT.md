@@ -74,6 +74,25 @@ Process:       PM2（本番）
 ### Deduction（年次控除）
 確定申告・住民税計算で使う年単位の控除額。`deductionType` は `lifeInsuranceGeneral` / `lifeInsuranceCareMedical` / `lifeInsurancePension` / `furusatoNozei`。
 
+`furusatoNozei` だけは意味が変わっている。ふるさと納税の正本は `FurusatoDonation`（寄付明細）で、
+この行は**明細に載せていない調整額**（移行前に年間合計だけを登録していた分）を保持する。
+
+### FurusatoDonation（ふるさと納税の寄付明細）
+寄付1件ごとの明細。ふるさと納税の実績はこのテーブルを唯一の正本として扱う。
+
+- `year` は `donatedAt` から**サーバー側で導出**して保存する非正規化カラム（年ごとの集計・絞り込み用）。
+  APIのリクエストでは受け取らない。寄付日を更新したときは `year` も追随させること
+- `oneStopStatus`（ワンストップ特例）: `notApplied` / `applied` / `accepted` / `switchedToTaxReturn`
+- `certificateStatus`（寄附金控除証明書）: `notReceived` / `received` / `notNeeded`
+- `switchedToTaxReturn` かつ `notNeeded` の組み合わせだけは不正（確定申告するなら証明書が要る）。
+  PATCH は送られてこなかった項目が保存済みの値のまま残るため、**更新後の組み合わせで**検証する
+  （`isValidStatusCombination()`）
+- 削除は `deletedAt` による論理削除（`Salary` / `Bonus` と同じ）
+
+**年間のふるさと納税額は 明細合計 + 調整額 で求める**（`getFurusatoDonationSummary()`）。
+移行前のデータは明細が0件なので `effectiveTotal === adjustment` となり、過去年の税計算結果は変わらない。
+両方に金額がある年だけ、確定申告画面で二重計上の注意を表示する。
+
 ### TaxCalculationOverride
 住民税・所得税の計算過程（[annualTax.ts](./src/lib/annualTax.ts) の各ステップ）を、実際の課税決定通知書等の金額で手動上書きするためのテーブル。`field` に計算過程のキー（例: `annualGrossIncome`）を持ち、上書きした値は下流のステップにも反映される。
 
@@ -102,6 +121,9 @@ DELETE       /api/deductions/[id]
 GET/POST     /api/tax-calculation-overrides
 DELETE       /api/tax-calculation-overrides/[id]
 
+GET/POST     /api/furusato-donations          GETは ?year= / ?oneStopStatus= / ?certificateStatus= で絞り込み
+PATCH/DELETE /api/furusato-donations/[id]     DELETEは論理削除
+
 GET          /auth/callback               Supabase OAuthコールバック（route.ts）
 ```
 
@@ -120,7 +142,7 @@ GET          /auth/callback               Supabase OAuthコールバック（rou
 /items                     項目管理（種別・適用範囲・並び順）
 /settings                  保険料率の改定履歴、プロフィール
 /tax-return                確定申告データ（年ごとに開閉できるセクション）
-                             - ふるさと納税シミュレーション（見込み控除上限額）
+                             - ふるさと納税 残り枠（見込み上限額・寄付済額・追加可能額）
                              - 所得税・住民税の計算過程の詳細と手動上書き
 ```
 
@@ -170,7 +192,11 @@ export async function GET(request: Request) {
 - 前年の給与・賞与合計、生命保険料、ふるさと納税額から、所得税の確定申告額・住民税の月割額を推定
 - 実装はユーザーのExcel（資産管理.xlsx「税金計算」シート）の数式を再現した簡略版。前提・非対応項目はファイル冒頭のコメントに明記（扶養親族等の数=0人固定、生命保険料控除の3種合計上限は非対応、均等割・森林環境税は全国標準額のみ、税制は令和7年分以降で固定 等）
 - 計算過程の各ステップは `TaxCalculationOverride` で実際の金額に上書き可能（上書きは下流のステップにも反映される）
-- ふるさと納税の控除上限額シミュレーションは当年の給与・賞与見込みから概算する（[furusato-nozei-estimate.tsx](<./src/app/(app)/tax-return/furusato-nozei-estimate.tsx>)）
+- ふるさと納税の残り枠は当年の給与・賞与見込みから概算する（[furusato-quota-card.tsx](<./src/app/(app)/tax-return/furusato-quota-card.tsx>)）
+  - `getFurusatoNozeiIncomeProjection` は見込み年収・見込み社会保険料に加えて、給与の未登録月・賞与の見込み回数・実績だけの合計を返す。カードはこれを使って「どこからが見込みか」を画面に出す
+  - **寄付済額を取り出す唯一の入口は `getFurusatoDonationSummaries`**。寄付明細（`FurusatoDonation`）の合計 + 年次控除 `Deduction.furusatoNozei` の調整額を `effectiveTotal` として返す。画面・税計算はこの `effectiveTotal` を使い、**`Deduction.furusatoNozei` を単独で参照しないこと**（二重計上になる）
+  - 上限額は確定値として扱わない。医療費控除・住宅ローン控除・扶養控除が未対応のため、源泉徴収票の値（`annualGrossIncome` / `socialInsuranceTotal` / `incomeTaxWithheldTotal`）を上書きしても「確定確認済み」までで、未対応の控除は画面に出し続ける
+  - `TaxCalculationOverride` の上書きとは競合させない。`furusatoNozeiEffective` の上書きがあれば寄付済額はそちらを優先し、年収・社会保険料の上書きはカードの試算欄の初期値になる（試算のためこの2項目だけは `calculateAnnualResidentTax` へ渡す上書きから外す）
 
 ---
 
@@ -184,7 +210,7 @@ export async function GET(request: Request) {
 | `Charts/SalaryEarningChart` `SalaryDeductionChart` `BonusEarningChart` `BonusDeductionChart` | 支給額・控除額の推移グラフ（`ChartFrame` / `ChartLegend` / `chartColors` で共通化） |
 | `Charts/DetailBreakdownChart` | 明細1件（年別では1年分）の内訳。支給を上段・控除を下段に置いた積み上げ横棒と、全項目を常時表示する一覧表。横軸の最大値は支給総額で固定し、控除の棒の長さがそのまま負担割合になる。大分類をクリックするとその分類だけを100%とした内訳へ切り替わり、グラフと一覧表は選択状態を双方向に連動させる（#57） |
 | `tax-return/tax-calculation-detail.tsx` | 所得税・住民税の計算過程を項目ごとに表示し、手動上書きを保存する UI |
-| `tax-return/furusato-nozei-estimate.tsx` | ふるさと納税控除上限額の見込み表示 |
+| `tax-return/furusato-quota-card.tsx` | ふるさと納税の残り枠（見込み上限額・寄付済額・追加可能額、前提と未確定要素、年収・社会保険料の試算と差分、源泉徴収票の入力への導線） |
 | `AutoCalcHint` | 自動計算されたフィールドであることを示すヒント |
 | `ChangelogDialog` | アプリ内更新履歴ダイアログ（`src/lib/changelog.ts` の `APP_CHANGELOG` を表示。バージョンごとに変更点と、あれば「使い方」（`usage`）を表示） |
 | `Navigation` | 下部ナビゲーション |
@@ -247,6 +273,31 @@ npm run build:ci && npx next start -p 11057
 なお `next start` は `src/proxy.ts` が Supabase のURL・キーを必須にするため
 `.env.local` が要る（画面確認だけならダミー値でよい。ログイン不要の公開パスは
 `src/proxy.ts` の `publicPaths` を参照）。確認日 2026-08-23 / #57
+
+---
+
+## ⚙️ props の変化に合わせて state を作り直すとき
+
+`eslint.config.mjs` で有効にしている React Compiler の
+`react-hooks/set-state-in-effect` は、**`useEffect` の中での `setState` をエラーにする**。
+サーバーから渡ってきた初期値が変わったときに入力欄の state を追従させたい、という
+よくある用途もここに引っかかる（`npm run lint` が
+`Calling setState synchronously within an effect can trigger cascading renders` で落ちる）。
+
+このときは effect ではなく、**直前の props を state に持ち、レンダー中に比較して更新する**。
+React の "Adjusting state when a prop changes" のパターンで、追加のレンダーは発生するが
+effect のような二重描画にはならない。
+
+```tsx
+const [prev, setPrev] = useState({ base });
+if (prev.base !== base) {
+  setPrev({ base });
+  setValue(base);      // レンダー中の setState は許容される
+}
+```
+
+実例: [furusato-quota-card.tsx](<./src/app/(app)/tax-return/furusato-quota-card.tsx>)（源泉徴収票の値を
+保存した直後に試算欄の初期値を追従させる）。確認日 2026-09-01 / #176
 
 ---
 

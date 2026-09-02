@@ -32,6 +32,8 @@ npm run db:setup
 npm run db:migrate:dev
 ```
 
+`.env.local` を作らずに `npm run dev` を起動すると、サーバーは立ち上がるがproxy（`src/proxy.ts`）がSupabaseクライアントを生成できず、**ログイン画面を含む全ページが500になる**（`Your project's URL and Key are required to create a Supabase client!`）。git worktree（`meisai-lab-worktrees/issue-<番号>`）にも `.env.local` は自動ではコピーされないため、worktreeで画面を確認する場合は先に用意する。
+
 ログインはSupabase Auth経由のGoogle OAuthを使う。以下の環境変数が必要（`.env.local.example` 参照）。
 
 | 変数名 | 説明 |

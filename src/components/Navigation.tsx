@@ -3,17 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
-import { Wallet, Gift, ListChecks, Receipt, ReceiptJapaneseYen, Settings, LogOut, Loader2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Wallet, Gift, ListChecks, Receipt, ReceiptJapaneseYen, HeartHandshake, Settings, LogOut, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/app/actions/auth";
 
-const navItems = [
+const navItems: {
+  href: string;
+  label: string;
+  /** スマホの下タブ用の短縮ラベル。無ければ label をそのまま使う */
+  shortLabel?: string;
+  icon: LucideIcon;
+}[] = [
   { href: "/salaries", label: "給与", icon: Wallet },
   { href: "/bonuses", label: "賞与", icon: Gift },
   { href: "/items", label: "項目", icon: ListChecks },
   { href: "/tax-return", label: "確定申告", icon: Receipt },
+  // スマホの下タブは6項目になるため、ここだけラベルを短くしている
+  { href: "/furusato", label: "ふるさと納税", shortLabel: "ふるさと", icon: HeartHandshake },
   { href: "/settings", label: "設定", icon: Settings },
 ];
 
@@ -65,19 +74,20 @@ export function Navigation() {
       </header>
 
       <nav className="order-last z-40 flex h-[74px] shrink-0 items-center border-t bg-background/95 py-1 backdrop-blur-md md:hidden">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, shortLabel, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
+              aria-label={label}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] whitespace-nowrap text-muted-foreground",
                 active && "font-medium text-primary"
               )}
             >
               <Icon className="size-5" />
-              {label}
+              {shortLabel ?? label}
             </Link>
           );
         })}
