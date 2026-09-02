@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Copy, MessageSquareText } from "lucide-react";
 
 import { calculateAnnualResidentTax, type ResidentTaxOverrides } from "@/lib/annualTax";
+import type { FurusatoDonationSummary } from "@/lib/annualTaxData";
 import { APP_VERSION } from "@/lib/app-version";
 import {
   buildSnapshotText,
@@ -43,6 +44,7 @@ export function ChatGptSnapshotDialog({
   projectedBonusMonths,
   amounts,
   overrides,
+  donationSummary,
 }: {
   year: number;
   isLocked: boolean;
@@ -57,6 +59,7 @@ export function ChatGptSnapshotDialog({
   projectedBonusMonths: number[];
   amounts: Partial<Record<DeductionType, number>>;
   overrides: ResidentTaxOverrides;
+  donationSummary: FurusatoDonationSummary;
 }) {
   const [open, setOpen] = useState(false);
   // ダイアログを開いた時刻を「計算日時」として出力する（サーバーとの時刻差でずれないよう、開いた時点で確定させる）
@@ -72,7 +75,11 @@ export function ChatGptSnapshotDialog({
     lifeInsuranceCareMedical: amounts.lifeInsuranceCareMedical ?? 0,
     lifeInsurancePension: amounts.lifeInsurancePension ?? 0,
   };
-  const furusatoNozei = amounts.furusatoNozei ?? 0;
+  // 寄付明細が正本。スナップショットの寄付済み額・税額試算に使う額は
+  // 明細合計 + 明細に載せていない調整額（#174）。調整額は計算過程の詳細で手入力できるため、
+  // 保存前の値（amounts）があればそちらを優先する。
+  const furusatoAdjustment = amounts.furusatoNozei ?? donationSummary.adjustment;
+  const furusatoEffectiveTotal = donationSummary.total + furusatoAdjustment;
 
   const text = useMemo(() => {
     if (!generatedAt) return "";
@@ -83,7 +90,7 @@ export function ChatGptSnapshotDialog({
       annualGrossIncome: estimatedGrossIncome,
       socialInsuranceTotal: estimatedSocialInsuranceTotal,
       ...premiums,
-      furusatoNozei,
+      furusatoNozei: furusatoEffectiveTotal,
       incomeTaxWithheldTotal: 0,
     });
     const actualBreakdown = calculateAnnualResidentTax(
@@ -91,7 +98,7 @@ export function ChatGptSnapshotDialog({
         annualGrossIncome: grossIncome,
         socialInsuranceTotal,
         ...premiums,
-        furusatoNozei,
+        furusatoNozei: furusatoEffectiveTotal,
         incomeTaxWithheldTotal,
       },
       overrides
@@ -112,7 +119,10 @@ export function ChatGptSnapshotDialog({
       registeredSalaryCount: salaryCount,
       registeredBonusCount: bonusCount,
       premiums,
-      furusato: { donated: furusatoNozei, limit: projectedBreakdown.furusatoNozeiLimit.value },
+      furusato: {
+        donated: furusatoEffectiveTotal,
+        limit: projectedBreakdown.furusatoNozeiLimit.value,
+      },
       tax: {
         employmentIncome: actualBreakdown.employmentIncome.value,
         incomeDeductionTotalForIncomeTax: actualBreakdown.incomeDeductionTotalForIncomeTax.value,
@@ -143,7 +153,7 @@ export function ChatGptSnapshotDialog({
     premiums.lifeInsuranceGeneral,
     premiums.lifeInsuranceCareMedical,
     premiums.lifeInsurancePension,
-    furusatoNozei,
+    furusatoEffectiveTotal,
     overrides,
     municipalityCount,
     oneStopSubmittedCount,
