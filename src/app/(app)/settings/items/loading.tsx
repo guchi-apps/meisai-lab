@@ -1,8 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { ItemsBreadcrumb } from "./breadcrumb";
 
 export default function Loading() {
   return (
     <div className="space-y-4">
+      <ItemsBreadcrumb />
       <h1 className="text-2xl font-semibold">項目管理</h1>
 
       <div className="flex justify-end">

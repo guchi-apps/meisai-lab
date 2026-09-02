@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { Wallet, Gift, ListChecks, Receipt, ReceiptJapaneseYen, HeartHandshake, Settings, LogOut, Loader2 } from "lucide-react";
+import { Wallet, Gift, Receipt, ReceiptJapaneseYen, HeartHandshake, Settings, LogOut, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,8 @@ const navItems: {
 }[] = [
   { href: "/salaries", label: "給与", icon: Wallet },
   { href: "/bonuses", label: "賞与", icon: Gift },
-  { href: "/items", label: "項目", icon: ListChecks },
   { href: "/tax-return", label: "確定申告", icon: Receipt },
-  // スマホの下タブは6項目になるため、ここだけラベルを短くしている
+  // スマホの下タブで折り返さないよう、ここだけラベルを短くしている
   { href: "/furusato", label: "ふるさと納税", shortLabel: "ふるさと", icon: HeartHandshake },
   { href: "/settings", label: "設定", icon: Settings },
 ];
