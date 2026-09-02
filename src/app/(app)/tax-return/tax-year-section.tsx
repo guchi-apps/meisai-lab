@@ -101,6 +101,7 @@ export function TaxYearSection({
         projectedBonusMonths={projection.projectedBonusMonths}
         amounts={liveAmounts}
         overrides={overrides}
+        donationSummary={donationSummary}
       />
 
       <div>
