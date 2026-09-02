@@ -116,3 +116,17 @@ dotenv v17 は案内文（`◇ injected env ...`）を **stdout** へ出すた�
 ```bash
 head -1 prisma/migrations/*/migration.sql
 ```
+
+## 開発サーバーでの画面確認の前提
+
+`.env.local` の `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` が空のままだと、
+`src/proxy.ts` が Supabase クライアントを作れず、**ログイン画面を含む全ページが500になる**
+（ルートが正しいかどうかとは無関係。ページを消したせいだと誤診しやすい）。
+サブPCの本体チェックアウトの `.env.local` もこの2つが空なので、そこからコピーされる各worktreeも同じ状態になる。
+
+このリポジトリには開発用ログインのバイパスが無く、GUIの無いサブPCではOAuthログインも完了できない。
+したがってログイン後の画面の目視確認はサブPC上ではできない。代わりに次で確認し、実画面の確認は
+レビュー時に人へ委ねる。
+
+- ルートが存在するか: `npm run build:ci` の出力に載るルート一覧
+- リダイレクト・公開ページ: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://localhost:11190/<path>`

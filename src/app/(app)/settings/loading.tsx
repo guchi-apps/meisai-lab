@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsItemsLink } from "./items-link";
 
 export default function Loading() {
   return (
@@ -19,15 +20,8 @@ export default function Loading() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>アプリ情報</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-9 w-24" />
-        </CardContent>
-      </Card>
+      {/* データに依存しないため、読み込み中もそのまま表示して遷移できるようにしている */}
+      <SettingsItemsLink />
 
       <Card>
         <CardHeader>
@@ -37,6 +31,16 @@ export default function Loading() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>アプリ情報</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-24" />
         </CardContent>
       </Card>
     </div>
