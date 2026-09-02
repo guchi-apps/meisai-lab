@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { ItemManager } from "@/components/ItemManager";
+import { ItemsBreadcrumb } from "./breadcrumb";
 import type { ItemDTO } from "@/types";
 
 export default async function ItemsPage() {
@@ -17,6 +18,7 @@ export default async function ItemsPage() {
 
   return (
     <div className="space-y-4">
+      <ItemsBreadcrumb />
       <h1 className="text-2xl font-semibold">項目管理</h1>
       <ItemManager items={itemDtos} />
     </div>

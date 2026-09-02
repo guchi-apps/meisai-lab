@@ -7,6 +7,7 @@ import { buildEffectiveFrom, findApplicableTaxSetting } from "@/lib/taxSetting";
 import { APP_VERSION } from "@/lib/app-version";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangelogDialog } from "@/components/ChangelogDialog";
+import { SettingsItemsLink } from "./items-link";
 import { TaxSettingForm } from "./tax-setting-form";
 import { TaxSettingHistory } from "./TaxSettingHistory";
 import type { TaxSettingDTO } from "@/types";
@@ -58,15 +59,7 @@ export default async function SettingsPage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>アプリ情報</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">バージョン v{APP_VERSION}</p>
-          <ChangelogDialog />
-        </CardContent>
-      </Card>
+      <SettingsItemsLink />
 
       <Card>
         <CardHeader>
@@ -83,6 +76,16 @@ export default async function SettingsPage({
             applicableTaxSetting={applicableTaxSettingDto}
           />
           <TaxSettingHistory taxSettings={allTaxSettingDtos} selectedYear={year} selectedMonth={month} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>アプリ情報</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">バージョン v{APP_VERSION}</p>
+          <ChangelogDialog />
         </CardContent>
       </Card>
     </div>
