@@ -57,7 +57,7 @@ export function SalaryDeductionChart({
 
   return (
     <div>
-      <ChartFrame itemCount={data.length} yAxisWidth={yAxisWidth}>
+      <ChartFrame itemCount={data.length} yAxisWidth={yAxisWidth} viewMode={viewMode}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
