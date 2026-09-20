@@ -1,3 +1,5 @@
+import { resolveCustomItems, toItemMap } from "@/lib/itemSnapshot";
+
 export function calculateOvertime(input: {
   baseSalary: number; // 月給
   overtimeHours: number; // 残業時間
@@ -129,23 +131,25 @@ export function calculateBonusWithholdingTax(
 // 保存済みの給与レコード（支給額・控除額・非課税支給項目）から算出する。
 export function calculatePreviousMonthTaxableSalary(
   salary: { grossSalary: number; data: Record<string, unknown> },
-  items: { id: string; itemType: string; isTaxable: boolean }[]
+  items: { id: string; itemName: string; itemType: string; isTaxable: boolean }[]
 ): number {
   const data = salary.data;
   const numAbs = (key: string) => {
     const value = data[key];
     return typeof value === "number" ? Math.abs(value) : 0;
   };
-  const customItemValues =
-    data.customItemValues && typeof data.customItemValues === "object"
-      ? (data.customItemValues as Record<string, number>)
-      : {};
-  const nonTaxableEarningTotal = items
-    .filter((item) => (item.itemType === "earning" || item.itemType === "otherEarning") && !item.isTaxable)
-    .reduce((sum, item) => sum + Math.abs(customItemValues[item.id] ?? 0), 0);
-  const otherTaxableTotal = items
-    .filter((item) => item.itemType === "otherTaxable")
-    .reduce((sum, item) => sum + Math.abs(customItemValues[item.id] ?? 0), 0);
+  // 非課税支給・その他(課税処理)の判定は、その給与を保存した時点の項目定義（data.itemSnapshots）を優先する（#212）
+  const customItems = resolveCustomItems(data, toItemMap(items));
+  const nonTaxableEarningTotal = customItems
+    .filter(
+      ({ definition }) =>
+        (definition.itemType === "earning" || definition.itemType === "otherEarning") &&
+        !definition.isTaxable
+    )
+    .reduce((sum, { value }) => sum + Math.abs(value), 0);
+  const otherTaxableTotal = customItems
+    .filter(({ definition }) => definition.itemType === "otherTaxable")
+    .reduce((sum, { value }) => sum + Math.abs(value), 0);
 
   return (
     salary.grossSalary -

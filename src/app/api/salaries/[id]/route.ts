@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
+import { withItemSnapshots } from "@/lib/itemSnapshotServer";
 import { UpdateSalarySchema } from "@/lib/validators";
 
 type Params = { params: Promise<{ id: string }> };
@@ -39,7 +40,9 @@ export async function PUT(request: Request, { params }: Params) {
     data: {
       ...rest,
       ...(salaryDate && { salaryDate: new Date(salaryDate) }),
-      ...(data && { data: data as Prisma.InputJsonValue }),
+      ...(data && {
+        data: (await withItemSnapshots(userId, data, existing.data)) as Prisma.InputJsonValue,
+      }),
     },
   });
   return Response.json(salary);
