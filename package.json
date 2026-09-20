@@ -1,6 +1,6 @@
 {
   "name": "meisai-lab",
-  "version": "1.6.8",
+  "version": "1.6.9",
   "private": true,
   "engines": {
     "node": ">=20.19.0"
@@ -13,6 +13,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "npm run lint && npm run typecheck",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.ts\"",
     "postinstall": "prisma generate",
     "preversion": "npm test",
     "version": "node scripts/version-changelog.mjs && git add src/lib/changelog.ts",
