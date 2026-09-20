@@ -164,6 +164,7 @@ GET          /auth/callback               Supabase OAuthコールバック（rou
 - ログインは Server Action（[src/app/actions/auth.ts](./src/app/actions/auth.ts)）が `supabase.auth.signInWithOAuth()` を呼び、返ってきた Supabase の認可URLへ redirect する。
 - コールバック（[src/app/auth/callback/route.ts](./src/app/auth/callback/route.ts)）で `exchangeCodeForSession()` した後、Supabaseユーザー（email）とPrisma `User`（`supabaseUserId`）を紐付ける。既存の `User` 行が無ければ新規作成する（許可ユーザー制限なし、issue #52）。
 - `requireUserId()`（[src/lib/auth-user.ts](./src/lib/auth-user.ts)）が `supabase.auth.getUser()` でSupabase側に問い合わせて検証し、対応する Prisma `User.id` を返す共通の認証チョークポイント。API・ページの双方から利用する。
+- **ログアウトは `signOutThisApp()`（[src/lib/supabase/sign-out.ts](./src/lib/supabase/sign-out.ts)）を必ず経由する**。共通Supabaseプロジェクトでは `supabase.auth.signOut()` の既定 scope が `global` のため、引数なしで呼ぶと同じユーザーの他アプリ・他端末の refresh token まで失効する。`signOutThisApp()` は `scope: "local"` を固定してこのアプリのセッションだけを破棄する。直接 `.signOut(` を呼ぶと `npm run test:unit` が落ちる。このアプリにはアカウント削除の操作は無い（追加する場合のみ、全セッションを終了する意図を明示した別経路にする）。
 - **ログイン通知（Signaly）**: コールバックルートから [src/lib/signaly.ts](./src/lib/signaly.ts) の `notifySignalyLogin` を呼び、`SIGNALY_LOGIN_WEBHOOK_URL` が設定されていればメールアドレス・接続元 IP・時刻を Signaly の Webhook（Discord embed 互換 JSON）に通知する。未設定時は何もしない。
 
 ### Route Handler での認証確認（各 API 共通パターン）
