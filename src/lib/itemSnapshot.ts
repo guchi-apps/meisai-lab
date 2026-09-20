@@ -71,23 +71,29 @@ export function toItemMap(items: ItemWithId[]): Map<string, ItemDefinition> {
 /**
  * 保存する `data` に、金額を持つ項目の定義の写しを付ける。
  * すでに明細に写しがある項目は上書きしない（明細を編集し直しただけで、保存時点の区分が今の区分に
- * 置き換わらないようにするため）。`data` に `customItemValues` が無ければそのまま返す。
+ * 置き換わらないようにするため）。`data` に `customItemValues` が無ければ写しを付けない。
+ *
+ * リクエストで渡ってきた `data.itemSnapshots` は信頼せず常に捨てる。写しはサーバーだけが、
+ * 保存済みの明細（`existingData`）と現在の項目マスタから組み立てる。クライアントの入力を通すと、
+ * 確定済みの過去の課税区分を後から書き換えられてしまう。
  */
 export function attachItemSnapshots(
   data: Record<string, unknown>,
   currentItems: ItemWithId[],
   existingData?: unknown
 ): Record<string, unknown> {
-  const customItemValues = data.customItemValues;
-  if (!isRecord(customItemValues)) return data;
+  const rest = { ...data };
+  delete rest.itemSnapshots;
+  const customItemValues = rest.customItemValues;
+  if (!isRecord(customItemValues)) return rest;
 
   const currentById = toItemMap(currentItems);
-  const previous = { ...readItemSnapshots(existingData), ...readItemSnapshots(data) };
+  const previous = readItemSnapshots(existingData);
 
   const snapshots: ItemSnapshots = {};
   for (const itemId of Object.keys(customItemValues)) {
     const definition = previous[itemId] ?? currentById.get(itemId);
     if (definition) snapshots[itemId] = definition;
   }
-  return { ...data, itemSnapshots: snapshots };
+  return { ...rest, itemSnapshots: snapshots };
 }

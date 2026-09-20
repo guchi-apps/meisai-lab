@@ -5,6 +5,9 @@ import { UpdateItemSchema } from "@/lib/validators";
 
 type Params = { params: Promise<{ id: string }> };
 
+// 明細を1件ずつ更新するため、明細数が多いユーザーでも既定の5秒で打ち切られないようにする
+const TRANSACTION_OPTIONS = { timeout: 30_000 };
+
 export async function PUT(request: Request, { params }: Params) {
   const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +32,7 @@ export async function PUT(request: Request, { params }: Params) {
   const item = await db.$transaction(async (tx) => {
     if (changesDefinition) await freezeItemDefinition(tx, userId, existing);
     return tx.item.update({ where: { id }, data: parsed.data });
-  });
+  }, TRANSACTION_OPTIONS);
   return Response.json(item);
 }
 
@@ -45,6 +48,6 @@ export async function DELETE(_request: Request, { params }: Params) {
   await db.$transaction(async (tx) => {
     await freezeItemDefinition(tx, userId, existing);
     await tx.item.delete({ where: { id } });
-  });
+  }, TRANSACTION_OPTIONS);
   return new Response(null, { status: 204 });
 }
