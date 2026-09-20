@@ -40,11 +40,13 @@ Process:       PM2（本番）
 
 スキーマ本体は [prisma/schema.prisma](./prisma/schema.prisma) を正とする。以下は概要。
 
-### 認証まわり（Auth.js 標準）
-`Account` / `Session` / `VerificationToken` — `@auth/prisma-adapter` が要求する標準テーブル。
+### 認証まわり（Supabase Auth）
+認証専用のテーブルは持たない（Auth.js 時代の `Account` / `Session` / `VerificationToken` は Supabase Auth 移行で廃止済み、issue #52）。
+セッションは Supabase が Cookie で管理し、Supabase ユーザーとの対応は `User.supabaseUserId` で取る（詳細は「認証フロー」）。
 
 ### User
-`Salary` / `Bonus` / `Item` / `TaxSetting` / `Deduction` / `TaxCalculationOverride` の親。
+`Salary` / `Bonus` / `Item` / `TaxSetting` / `Deduction` / `TaxCalculationOverride` / `FurusatoDonation` の親。
+`supabaseUserId`（Supabase Auth のユーザーID）で Supabase 側のユーザーと紐付く。
 
 ### Salary（給与明細）
 - `salaryDate`（支給日、`@@unique([userId, salaryDate])`）
@@ -100,7 +102,7 @@ Process:       PM2（本番）
 
 ## 🌐 Route Handlers（API エンドポイント）
 
-すべて `auth()` によるセッションチェック（401 JSON 応答）を各ハンドラ自身が行う（`src/proxy.ts` は `/api/*` を素通りさせる設計）。
+すべて `requireUserId()`（[src/lib/auth-user.ts](./src/lib/auth-user.ts)）による認証チェック（未認証は 401 JSON 応答）を各ハンドラ自身が行う（`src/proxy.ts` は `/api/*` を素通りさせる設計）。
 
 ```
 GET/POST     /api/salaries
@@ -139,8 +141,8 @@ GET          /auth/callback               Supabase OAuthコールバック（rou
 /salaries/new              給与新規登録
 /salaries/[id]/edit        給与編集
 /bonuses                   賞与一覧・新規・編集
-/items                     項目管理（種別・適用範囲・並び順）
 /settings                  保険料率の改定履歴、プロフィール
+/settings/items            項目管理（種別・適用範囲・並び順。設定画面から入る。issue #190）
 /tax-return                確定申告データ（年ごとに開閉できるセクション）
                              - ふるさと納税 残り枠（見込み上限額・寄付済額・追加可能額）
                              - 所得税・住民税の計算過程の詳細と手動上書き
@@ -223,7 +225,7 @@ export async function GET(request: Request) {
 meisai-lab/
 ├── src/
 │   ├── app/
-│   │   ├── (app)/                     認証必須ページ（salaries, bonuses, items, settings, tax-return）
+│   │   ├── (app)/                     認証必須ページ（salaries, bonuses, settings（項目管理 settings/items を含む）, tax-return）
 │   │   ├── auth/                      signin, error, callback（Supabase OAuthコールバック）
 │   │   ├── api/                       Route Handlers
 │   │   ├── layout.tsx / manifest.ts   共通レイアウト・PWAマニフェスト
@@ -317,4 +319,4 @@ if (prev.base !== base) {
 
 ---
 
-**最終更新日:** 2026-08-23
+**最終更新日:** 2026-09-20
