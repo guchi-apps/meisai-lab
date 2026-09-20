@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { INCOME_TAX_ADJUSTMENT_ITEM_NAMES } from "@/lib/annualTax";
 import type { ResidentTaxBreakdownField, ResidentTaxOverrides } from "@/lib/annualTax";
+import { resolveCustomItems, toItemMap, type ItemDefinition } from "@/lib/itemSnapshot";
 
 function sumAbsField(data: unknown, field: string): number {
   const d = (data ?? {}) as Record<string, unknown>;
@@ -23,31 +24,34 @@ function insuranceFromData(data: unknown): number {
   );
 }
 
-function customItemValue(data: unknown, itemId: string): number {
-  const d = (data ?? {}) as Record<string, unknown>;
-  const raw = d.customItemValues;
-  if (!raw || typeof raw !== "object") return 0;
-  const value = (raw as Record<string, unknown>)[itemId];
-  return typeof value === "number" ? value : 0;
+// 項目の定義は、明細に保存した写し（data.itemSnapshots）→ 現在の項目マスタ の順で解決する（#212）。
+// 現在のマスタだけを見ると、項目の課税区分・名前・種別を後から変えたときに過去年の集計まで変わってしまう。
+type CurrentItems = ReadonlyMap<string, ItemDefinition>;
+
+async function getCurrentItems(userId: string): Promise<CurrentItems> {
+  const items = await db.item.findMany({
+    where: { userId },
+    select: { id: true, itemName: true, itemType: true, isTaxable: true },
+  });
+  return toItemMap(items);
 }
 
 // 通勤手当など、支給額(grossSalary/amount)には含まれるが所得税・住民税の課税対象にはならない項目の金額を合計する
-function nonTaxableEarningFromData(data: unknown, nonTaxableItemIds: Set<string>): number {
-  const d = (data ?? {}) as Record<string, unknown>;
-  const raw = d.customItemValues;
-  if (!raw || typeof raw !== "object") return 0;
-  return Object.entries(raw as Record<string, unknown>).reduce((sum, [itemId, value]) => {
-    if (!nonTaxableItemIds.has(itemId) || typeof value !== "number") return sum;
-    return sum + Math.abs(value);
-  }, 0);
+function nonTaxableEarningFromData(data: unknown, currentItems: CurrentItems): number {
+  return resolveCustomItems(data, currentItems)
+    .filter(
+      ({ definition }) =>
+        (definition.itemType === "earning" || definition.itemType === "otherEarning") &&
+        !definition.isTaxable
+    )
+    .reduce((sum, { value }) => sum + Math.abs(value), 0);
 }
 
-async function getNonTaxableEarningItemIds(userId: string): Promise<Set<string>> {
-  const items = await db.item.findMany({
-    where: { userId, isTaxable: false, itemType: { in: ["earning", "otherEarning"] } },
-    select: { id: true },
-  });
-  return new Set(items.map((item) => item.id));
+// 年末調整・所得税(差額)項目の金額（追加徴収ならマイナス、還付ならプラスで保存されている）を合計する
+function incomeTaxAdjustmentFromData(data: unknown, currentItems: CurrentItems): number {
+  return resolveCustomItems(data, currentItems)
+    .filter(({ definition }) => INCOME_TAX_ADJUSTMENT_ITEM_NAMES.includes(definition.itemName))
+    .reduce((sum, { value }) => sum + value, 0);
 }
 
 // 年末調整・賞与の所得税(差額)を項目として手入力している場合、源泉徴収税額の集計から差し引く
@@ -66,7 +70,7 @@ export async function getAnnualAggregate(
   const gte = new Date(`${year}-01-01`);
   const lt = new Date(`${year + 1}-01-01`);
 
-  const [salaries, bonuses, adjustmentItems, nonTaxableItemIds] = await Promise.all([
+  const [salaries, bonuses, currentItems] = await Promise.all([
     db.salary.findMany({
       where: { userId, deletedAt: null, salaryDate: { gte, lt } },
       select: { grossSalary: true, data: true },
@@ -75,18 +79,14 @@ export async function getAnnualAggregate(
       where: { userId, deletedAt: null, bonusDate: { gte, lt } },
       select: { amount: true, data: true },
     }),
-    db.item.findMany({
-      where: { userId, itemName: { in: INCOME_TAX_ADJUSTMENT_ITEM_NAMES } },
-      select: { id: true },
-    }),
-    getNonTaxableEarningItemIds(userId),
+    getCurrentItems(userId),
   ]);
 
   // 通勤手当など非課税支給項目は支給額(grossSalary/amount)に含まれるが、
   // 確定申告の「給与」(収入金額)には含めない
   const nonTaxableEarningTotal =
-    salaries.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, nonTaxableItemIds), 0) +
-    bonuses.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, nonTaxableItemIds), 0);
+    salaries.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, currentItems), 0) +
+    bonuses.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, currentItems), 0);
 
   const grossIncome =
     salaries.reduce((sum, r) => sum + Number(r.grossSalary), 0) +
@@ -97,8 +97,7 @@ export async function getAnnualAggregate(
     bonuses.reduce((sum, r) => sum + insuranceFromData(r.data), 0);
 
   const incomeTaxAdjustmentTotal = [...salaries, ...bonuses].reduce(
-    (sum, r) =>
-      sum + adjustmentItems.reduce((itemSum, item) => itemSum + customItemValue(r.data, item.id), 0),
+    (sum, r) => sum + incomeTaxAdjustmentFromData(r.data, currentItems),
     0
   );
   const incomeTaxWithheldTotal =
@@ -143,7 +142,7 @@ export async function getFurusatoNozeiIncomeProjection(
   const prevGte = new Date(`${year - 1}-01-01`);
   const prevLt = new Date(`${year}-01-01`);
 
-  const [salaries, bonuses, prevBonuses, nonTaxableItemIds] = await Promise.all([
+  const [salaries, bonuses, prevBonuses, currentItems] = await Promise.all([
     db.salary.findMany({
       where: { userId, deletedAt: null, salaryDate: { gte, lt } },
       select: { salaryDate: true, grossSalary: true, data: true },
@@ -157,12 +156,12 @@ export async function getFurusatoNozeiIncomeProjection(
       where: { userId, deletedAt: null, bonusDate: { gte: prevGte, lt: prevLt } },
       select: { bonusDate: true, amount: true, data: true },
     }),
-    getNonTaxableEarningItemIds(userId),
+    getCurrentItems(userId),
   ]);
 
   // 通勤手当など非課税支給項目は支給額(grossSalary/amount)に含まれるが、収入金額の見込みには含めない
   const taxableGross = (grossSalary: number, data: unknown) =>
-    grossSalary - nonTaxableEarningFromData(data, nonTaxableItemIds);
+    grossSalary - nonTaxableEarningFromData(data, currentItems);
 
   const actualSalaryGross = salaries.reduce((sum, s) => sum + taxableGross(Number(s.grossSalary), s.data), 0);
   const actualSalaryInsurance = salaries.reduce((sum, s) => sum + insuranceFromData(s.data), 0);

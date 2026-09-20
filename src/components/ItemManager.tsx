@@ -304,6 +304,12 @@ export function ItemManager({ items: initialItems }: { items: ItemDTO[] }) {
                   />
                 </div>
               )}
+              {editingItem && (
+                <p className="text-xs text-muted-foreground">
+                  項目名・種別・課税対象を変更しても、すでに保存した給与・賞与の明細は保存時点の内容のまま集計されます
+                  （確定申告・住民税の過去年の金額は変わりません）。変更は今後保存する明細から使われます。
+                </p>
+              )}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="size-4 animate-spin" />}
                 {editingItem ? "更新する" : "追加する"}
