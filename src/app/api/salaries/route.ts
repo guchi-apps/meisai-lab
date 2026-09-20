@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
+import { withItemSnapshots } from "@/lib/itemSnapshotServer";
 import { CreateSalarySchema } from "@/lib/validators";
 
 export async function GET(request: Request) {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       userId,
       ...parsed.data,
       salaryDate: new Date(parsed.data.salaryDate),
-      data: (parsed.data.data ?? {}) as Prisma.InputJsonValue,
+      data: (await withItemSnapshots(userId, parsed.data.data ?? {})) as Prisma.InputJsonValue,
     },
   });
   return Response.json(salary, { status: 201 });

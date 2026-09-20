@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
+import { withItemSnapshots } from "@/lib/itemSnapshotServer";
 import { CreateBonusSchema } from "@/lib/validators";
 
 export async function GET(request: Request) {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       userId,
       ...parsed.data,
       bonusDate: new Date(parsed.data.bonusDate),
-      data: (parsed.data.data ?? {}) as Prisma.InputJsonValue,
+      data: (await withItemSnapshots(userId, parsed.data.data ?? {})) as Prisma.InputJsonValue,
     },
   });
   return Response.json(bonus, { status: 201 });
