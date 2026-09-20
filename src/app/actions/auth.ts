@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { AUTH_NEXT_COOKIE } from "@/lib/auth-next-cookie";
 import { resolveOrigin } from "@/lib/request-origin";
 import { createClient } from "@/lib/supabase/server";
+import { signOutThisApp } from "@/lib/supabase/sign-out";
 
 export async function signOutAction() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await signOutThisApp(supabase);
   redirect("/");
 }
 

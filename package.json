@@ -13,6 +13,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "npm run lint && npm run typecheck",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.ts\"",
     "postinstall": "prisma generate",
     "preversion": "npm test",
     "version": "node scripts/version-changelog.mjs && git add src/lib/changelog.ts",
