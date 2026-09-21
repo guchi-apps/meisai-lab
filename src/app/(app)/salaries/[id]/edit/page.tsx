@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { buildAnnualTaxData } from "@/lib/annualTaxData";
 import { resolveEditableItems, savedItemIds } from "@/lib/editableItems";
@@ -13,8 +13,7 @@ export default async function EditSalaryPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const { id } = await params;
   const salary = await db.salary.findFirst({ where: { id, userId, deletedAt: null } });
