@@ -191,10 +191,12 @@ export async function GET(request: Request) {
 - `calculateWithholdingIncomeTax`: 国税庁の給与所得の源泉徴収税額の電算機計算の特例を実装（甲欄・扶養親族等の数=0人のみ対応）
 - `calculateBonusWithholdingTax` / `calculatePreviousMonthTaxableSalary`: 賞与の源泉徴収税額を、直近の給与データと非課税支給項目から自動算出
 
-### 年次（確定申告・住民税見積り）— [src/lib/annualTax.ts](./src/lib/annualTax.ts) / [annualTaxData.ts](./src/lib/annualTaxData.ts)
+### 年次（確定申告・住民税見積り）— [src/lib/annualTax.ts](./src/lib/annualTax.ts) / [annualTaxAggregate.ts](./src/lib/annualTaxAggregate.ts) / [annualTaxData.ts](./src/lib/annualTaxData.ts)
 - 前年の給与・賞与合計、生命保険料、ふるさと納税額から、所得税の確定申告額・住民税の月割額を推定
 - 実装はユーザーのExcel（資産管理.xlsx「税金計算」シート）の数式を再現した簡略版。前提・非対応項目はファイル冒頭のコメントに明記（扶養親族等の数=0人固定、生命保険料控除の3種合計上限は非対応、均等割・森林環境税は全国標準額のみ、税制は令和7年分以降で固定 等）
 - 計算過程の各ステップは `TaxCalculationOverride` で実際の金額に上書き可能（上書きは下流のステップにも反映される）
+- 明細行 → 年間集計・ふるさと納税見込みの計算は `annualTaxAggregate.ts`（`computeAnnualAggregate` / `computeFurusatoNozeiIncomeProjection`）に置き、`annualTaxData.ts` は DB から行を読んで渡すだけにしている。`db` に依存させないのは `node --test` で単体テストするため（`@/` エイリアスは使えないので、相対 import は拡張子 `.ts` 付きで書く）
+- **税計算の閾値・数式を変えたら `npm run test:unit`（`annualTax.test.ts` / `annualTaxAggregate.test.ts`）の期待値も条文に合わせて直す。** 期待値は速算表・控除額表からの手計算で、コードの出力を写していない。`npm test` に含まれている。区間の上限ちょうどの値が条文（「以下」）とずれている箇所は `todo` テストとして残してある（#233）
 - ふるさと納税の残り枠は当年の給与・賞与見込みから概算する（[furusato-quota-card.tsx](<./src/app/(app)/tax-return/furusato-quota-card.tsx>)）
   - `getFurusatoNozeiIncomeProjection` は見込み年収・見込み社会保険料に加えて、給与の未登録月・賞与の見込み回数・実績だけの合計を返す。カードはこれを使って「どこからが見込みか」を画面に出す
   - **寄付済額を取り出す唯一の入口は `getFurusatoDonationSummaries`**。寄付明細（`FurusatoDonation`）の合計 + 年次控除 `Deduction.furusatoNozei` の調整額を `effectiveTotal` として返す。画面・税計算はこの `effectiveTotal` を使い、**`Deduction.furusatoNozei` を単独で参照しないこと**（二重計上になる）

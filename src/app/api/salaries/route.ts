@@ -1,5 +1,10 @@
 import type { Prisma } from "@prisma/client";
 
+import {
+  SALARY_DATE_CONFLICT_MESSAGE,
+  conflictResponse,
+  isUniqueConstraintError,
+} from "@/lib/apiConflict";
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { withItemSnapshots } from "@/lib/itemSnapshotServer";
@@ -48,13 +53,19 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const salary = await db.salary.create({
-    data: {
-      userId,
-      ...parsed.data,
-      salaryDate: new Date(parsed.data.salaryDate),
-      data: (await withItemSnapshots(userId, parsed.data.data ?? {})) as Prisma.InputJsonValue,
-    },
-  });
-  return Response.json(salary, { status: 201 });
+  const salaryDate = new Date(parsed.data.salaryDate);
+  const data = (await withItemSnapshots(userId, parsed.data.data ?? {})) as Prisma.InputJsonValue;
+
+  try {
+    // 削除済み（論理削除）の同日の行が一意制約に残っていると登録できないため、先に取り除く。
+    // 有効な同日の行があればcreateが一意制約違反になり、トランザクションごと巻き戻る。
+    const salary = await db.$transaction(async (tx) => {
+      await tx.salary.deleteMany({ where: { userId, salaryDate, deletedAt: { not: null } } });
+      return tx.salary.create({ data: { userId, ...parsed.data, salaryDate, data } });
+    });
+    return Response.json(salary, { status: 201 });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) return conflictResponse(SALARY_DATE_CONFLICT_MESSAGE);
+    throw error;
+  }
 }

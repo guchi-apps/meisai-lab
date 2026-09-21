@@ -1,32 +1,17 @@
 // サーバー専用（`db` に依存する唯一の lib ファイル）。クライアントコンポーネントから import しないこと。
+// 明細行から集計値を出す純粋な計算は `annualTaxAggregate.ts` にある（DB なしで単体テストするため）。
 import { db } from "@/lib/db";
-import { INCOME_TAX_ADJUSTMENT_ITEM_NAMES } from "@/lib/annualTax";
 import type { ResidentTaxBreakdownField, ResidentTaxOverrides } from "@/lib/annualTax";
-import { resolveCustomItems, toItemMap, type ItemDefinition } from "@/lib/itemSnapshot";
+import {
+  computeAnnualAggregate,
+  computeFurusatoNozeiIncomeProjection,
+  type AnnualAggregate,
+  type CurrentItems,
+  type FurusatoNozeiIncomeProjection,
+} from "@/lib/annualTaxAggregate";
+import { toItemMap } from "@/lib/itemSnapshot";
 
-function sumAbsField(data: unknown, field: string): number {
-  const d = (data ?? {}) as Record<string, unknown>;
-  const value = d[field];
-  return typeof value === "number" ? Math.abs(value) : 0;
-}
-
-function numberField(data: unknown, field: string): number {
-  const d = (data ?? {}) as Record<string, unknown>;
-  const value = d[field];
-  return typeof value === "number" ? value : 0;
-}
-
-function insuranceFromData(data: unknown): number {
-  return (
-    sumAbsField(data, "healthInsurance") +
-    sumAbsField(data, "pension") +
-    sumAbsField(data, "employmentInsurance")
-  );
-}
-
-// 項目の定義は、明細に保存した写し（data.itemSnapshots）→ 現在の項目マスタ の順で解決する（#212）。
-// 現在のマスタだけを見ると、項目の課税区分・名前・種別を後から変えたときに過去年の集計まで変わってしまう。
-type CurrentItems = ReadonlyMap<string, ItemDefinition>;
+export type { FurusatoNozeiIncomeProjection };
 
 async function getCurrentItems(userId: string): Promise<CurrentItems> {
   const items = await db.item.findMany({
@@ -36,37 +21,7 @@ async function getCurrentItems(userId: string): Promise<CurrentItems> {
   return toItemMap(items);
 }
 
-// 通勤手当など、支給額(grossSalary/amount)には含まれるが所得税・住民税の課税対象にはならない項目の金額を合計する
-function nonTaxableEarningFromData(data: unknown, currentItems: CurrentItems): number {
-  return resolveCustomItems(data, currentItems)
-    .filter(
-      ({ definition }) =>
-        (definition.itemType === "earning" || definition.itemType === "otherEarning") &&
-        !definition.isTaxable
-    )
-    .reduce((sum, { value }) => sum + Math.abs(value), 0);
-}
-
-// 年末調整・所得税(差額)項目の金額（追加徴収ならマイナス、還付ならプラスで保存されている）を合計する
-function incomeTaxAdjustmentFromData(data: unknown, currentItems: CurrentItems): number {
-  return resolveCustomItems(data, currentItems)
-    .filter(({ definition }) => INCOME_TAX_ADJUSTMENT_ITEM_NAMES.includes(definition.itemName))
-    .reduce((sum, { value }) => sum + value, 0);
-}
-
-// 年末調整・賞与の所得税(差額)を項目として手入力している場合、源泉徴収税額の集計から差し引く
-// （追加徴収ならマイナス、還付ならプラスで保存されているため、差し引くことで実際の源泉徴収額に一致する）
-
-export async function getAnnualAggregate(
-  userId: string,
-  year: number
-): Promise<{
-  grossIncome: number;
-  socialInsuranceTotal: number;
-  incomeTaxWithheldTotal: number;
-  salaryCount: number;
-  bonusCount: number;
-}> {
+export async function getAnnualAggregate(userId: string, year: number): Promise<AnnualAggregate> {
   const gte = new Date(`${year}-01-01`);
   const lt = new Date(`${year + 1}-01-01`);
 
@@ -82,57 +37,9 @@ export async function getAnnualAggregate(
     getCurrentItems(userId),
   ]);
 
-  // 通勤手当など非課税支給項目は支給額(grossSalary/amount)に含まれるが、
-  // 確定申告の「給与」(収入金額)には含めない
-  const nonTaxableEarningTotal =
-    salaries.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, currentItems), 0) +
-    bonuses.reduce((sum, r) => sum + nonTaxableEarningFromData(r.data, currentItems), 0);
-
-  const grossIncome =
-    salaries.reduce((sum, r) => sum + Number(r.grossSalary), 0) +
-    bonuses.reduce((sum, r) => sum + Number(r.amount), 0) -
-    nonTaxableEarningTotal;
-  const socialInsuranceTotal =
-    salaries.reduce((sum, r) => sum + insuranceFromData(r.data), 0) +
-    bonuses.reduce((sum, r) => sum + insuranceFromData(r.data), 0);
-
-  const incomeTaxAdjustmentTotal = [...salaries, ...bonuses].reduce(
-    (sum, r) => sum + incomeTaxAdjustmentFromData(r.data, currentItems),
-    0
-  );
-  const incomeTaxWithheldTotal =
-    salaries.reduce((sum, r) => sum + sumAbsField(r.data, "incomeTax"), 0) +
-    bonuses.reduce((sum, r) => sum + sumAbsField(r.data, "incomeTax"), 0) -
-    incomeTaxAdjustmentTotal;
-
-  return {
-    grossIncome,
-    socialInsuranceTotal,
-    incomeTaxWithheldTotal,
-    salaryCount: salaries.length,
-    bonusCount: bonuses.length,
-  };
+  return computeAnnualAggregate(salaries, bonuses, currentItems);
 }
 
-// ふるさと納税の残り枠カードで「どこまでが実績で、どこからが見込みか」を画面に出すための内訳。
-export type FurusatoNozeiIncomeProjection = {
-  estimatedGrossIncome: number;
-  estimatedSocialInsuranceTotal: number;
-  // 見込みを含まない、登録済みの実績だけの合計
-  actualGrossIncome: number;
-  actualSocialInsuranceTotal: number;
-  registeredSalaryMonths: number[];
-  missingSalaryMonths: number[];
-  projectedSalaryMonthCount: number;
-  registeredBonusMonths: number[];
-  projectedBonusMonths: number[];
-  projectedBonusTotal: number;
-};
-
-// ふるさと納税上限額の見込み計算用に、その年の残り月分の給与・賞与を推定する。
-// - 給与: 直近の給与明細と同じ基本給(baseGrossSalary)の月だけを対象に平均し、未登録の残り月数分を加算する
-//   （昇給があった場合、昇給前の月を平均に混ぜないようにするため）
-// - 賞与: 前年に支給があった月のうち、その年にまだ登録がない月については前年同月の支給額を見込みとして加算する
 export async function getFurusatoNozeiIncomeProjection(
   userId: string,
   year: number
@@ -159,67 +66,7 @@ export async function getFurusatoNozeiIncomeProjection(
     getCurrentItems(userId),
   ]);
 
-  // 通勤手当など非課税支給項目は支給額(grossSalary/amount)に含まれるが、収入金額の見込みには含めない
-  const taxableGross = (grossSalary: number, data: unknown) =>
-    grossSalary - nonTaxableEarningFromData(data, currentItems);
-
-  const actualSalaryGross = salaries.reduce((sum, s) => sum + taxableGross(Number(s.grossSalary), s.data), 0);
-  const actualSalaryInsurance = salaries.reduce((sum, s) => sum + insuranceFromData(s.data), 0);
-  let estimatedSalaryGross = actualSalaryGross;
-  let estimatedSalaryInsurance = actualSalaryInsurance;
-
-  const registeredSalaryMonths = Array.from(
-    new Set(salaries.map((s) => s.salaryDate.getMonth() + 1))
-  ).sort((a, b) => a - b);
-  const missingSalaryMonths = Array.from({ length: 12 }, (_, i) => i + 1).filter(
-    (month) => !registeredSalaryMonths.includes(month)
-  );
-
-  const remainingMonths = Math.max(12 - salaries.length, 0);
-  if (remainingMonths > 0 && salaries.length > 0) {
-    const currentBaseSalary = numberField(salaries[salaries.length - 1].data, "baseGrossSalary");
-    const currentRegime = salaries.filter(
-      (s) => numberField(s.data, "baseGrossSalary") === currentBaseSalary
-    );
-    const avgGross =
-      currentRegime.reduce((sum, s) => sum + taxableGross(Number(s.grossSalary), s.data), 0) /
-      currentRegime.length;
-    const avgInsurance =
-      currentRegime.reduce((sum, s) => sum + insuranceFromData(s.data), 0) / currentRegime.length;
-
-    estimatedSalaryGross += avgGross * remainingMonths;
-    estimatedSalaryInsurance += avgInsurance * remainingMonths;
-  }
-
-  const enteredBonusMonths = new Set(bonuses.map((b) => b.bonusDate.getMonth() + 1));
-  const actualBonusGross = bonuses.reduce((sum, b) => sum + taxableGross(Number(b.amount), b.data), 0);
-  const actualBonusInsurance = bonuses.reduce((sum, b) => sum + insuranceFromData(b.data), 0);
-  let estimatedBonusGross = actualBonusGross;
-  let estimatedBonusInsurance = actualBonusInsurance;
-
-  const projectedBonusMonths: number[] = [];
-  let projectedBonusTotal = 0;
-  for (const prevBonus of prevBonuses) {
-    if (enteredBonusMonths.has(prevBonus.bonusDate.getMonth() + 1)) continue;
-    const gross = taxableGross(Number(prevBonus.amount), prevBonus.data);
-    estimatedBonusGross += gross;
-    estimatedBonusInsurance += insuranceFromData(prevBonus.data);
-    projectedBonusMonths.push(prevBonus.bonusDate.getMonth() + 1);
-    projectedBonusTotal += gross;
-  }
-
-  return {
-    estimatedGrossIncome: Math.round(estimatedSalaryGross + estimatedBonusGross),
-    estimatedSocialInsuranceTotal: Math.round(estimatedSalaryInsurance + estimatedBonusInsurance),
-    actualGrossIncome: Math.round(actualSalaryGross + actualBonusGross),
-    actualSocialInsuranceTotal: Math.round(actualSalaryInsurance + actualBonusInsurance),
-    registeredSalaryMonths,
-    missingSalaryMonths,
-    projectedSalaryMonthCount: remainingMonths > 0 && salaries.length > 0 ? remainingMonths : 0,
-    registeredBonusMonths: Array.from(enteredBonusMonths).sort((a, b) => a - b),
-    projectedBonusMonths: projectedBonusMonths.sort((a, b) => a - b),
-    projectedBonusTotal: Math.round(projectedBonusTotal),
-  };
+  return computeFurusatoNozeiIncomeProjection(salaries, bonuses, prevBonuses, currentItems);
 }
 
 // ふるさと納税の「寄付済額」を取り出す唯一の入口。画面側はこのサマリーだけを見る。

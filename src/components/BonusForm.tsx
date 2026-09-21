@@ -14,6 +14,7 @@ import {
   calculateStatutoryInsurance,
 } from "@/lib/calculations";
 import { INCOME_TAX_ADJUSTMENT_ITEM_NAMES } from "@/lib/annualTax";
+import { readConflictMessage } from "@/lib/apiConflict";
 import { resolveManualNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,8 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AutoCalcHint } from "@/components/AutoCalcHint";
-import type { BonusDTO, ItemDTO, TaxSettingDTO } from "@/types";
+import { ItemFieldLabel } from "@/components/ItemFieldLabel";
+import type { BonusDTO, EditableItemDTO, ItemDTO, TaxSettingDTO } from "@/types";
 
 const bonusFormSchema = z.object({
   bonusDate: z.string().min(1, "支給日は必須です"),
@@ -84,7 +86,7 @@ export function BonusForm({
 }: {
   bonus?: BonusDTO;
   taxSetting?: TaxSettingDTO | null;
-  items?: ItemDTO[];
+  items?: EditableItemDTO[];
   previousMonthTaxableSalary?: number;
 }) {
   const router = useRouter();
@@ -264,7 +266,7 @@ export function BonusForm({
       });
 
       if (!res.ok) {
-        toast.error("保存に失敗しました");
+        toast.error(await readConflictMessage(res, "保存に失敗しました"));
         return;
       }
 
@@ -350,7 +352,7 @@ export function BonusForm({
           <div className="grid grid-cols-2 gap-4">
             {earningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -372,7 +374,7 @@ export function BonusForm({
           <div className="grid grid-cols-2 gap-4">
             {otherEarningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -397,7 +399,7 @@ export function BonusForm({
           <div className="grid grid-cols-2 gap-4">
             {otherTaxableItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -510,7 +512,7 @@ export function BonusForm({
           <div className="grid grid-cols-2 gap-4">
             {statutoryDeductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -533,7 +535,7 @@ export function BonusForm({
           <div className="grid grid-cols-2 gap-4">
             {deductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
