@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { findApplicableTaxSetting } from "@/lib/taxSetting";
 import { resolveEditableItems, savedItemIds } from "@/lib/editableItems";
@@ -13,8 +13,7 @@ export default async function EditBonusPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const { id } = await params;
   const bonus = await db.bonus.findFirst({ where: { id, userId, deletedAt: null } });

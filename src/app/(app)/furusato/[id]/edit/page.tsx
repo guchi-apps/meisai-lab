@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { FurusatoDonationForm } from "@/components/FurusatoDonationForm";
 import type { FurusatoDonationDTO } from "@/types";
@@ -10,8 +10,7 @@ export default async function EditFurusatoDonationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const { id } = await params;
   const donation = await db.furusatoDonation.findFirst({

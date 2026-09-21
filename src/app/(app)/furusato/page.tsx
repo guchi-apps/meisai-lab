@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus, TriangleAlert } from "lucide-react";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { getFurusatoDonationSummary } from "@/lib/annualTaxData";
 import { cn } from "@/lib/utils";
@@ -63,8 +62,7 @@ export default async function FurusatoPage({
 }: {
   searchParams: Promise<{ year?: string; oneStopStatus?: string; certificateStatus?: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const { year: yearParam, oneStopStatus, certificateStatus } = await searchParams;
   const currentYear = new Date().getFullYear();

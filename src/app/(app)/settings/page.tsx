@@ -1,7 +1,6 @@
 import Image from "next/image";
-import { redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { buildEffectiveFrom, findApplicableTaxSetting } from "@/lib/taxSetting";
 import { APP_VERSION } from "@/lib/app-version";
@@ -17,8 +16,7 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
   const user = await db.user.findUniqueOrThrow({ where: { id: userId } });
 
   const { year: yearParam, month: monthParam } = await searchParams;

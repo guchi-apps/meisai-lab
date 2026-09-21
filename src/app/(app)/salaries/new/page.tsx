@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { buildAnnualTaxData } from "@/lib/annualTaxData";
 import { findApplicableTaxSetting } from "@/lib/taxSetting";
@@ -8,8 +7,7 @@ import { SalaryForm } from "@/components/SalaryForm";
 import type { ItemDTO, TaxSettingDTO } from "@/types";
 
 export default async function NewSalaryPage() {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const currentYear = new Date().getFullYear();
   const candidateYears = [currentYear - 1, currentYear - 2];
