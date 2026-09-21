@@ -47,6 +47,9 @@ export type ItemDTO = {
   updatedAt: string;
 };
 
+// 編集画面用。明細に金額が載っているが、無効・適用範囲外・削除済みの項目には理由を `statusNote` に持たせる
+export type EditableItemDTO = ItemDTO & { statusNote?: string };
+
 export type TaxSettingDTO = {
   id: string;
   userId: string;

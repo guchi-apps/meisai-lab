@@ -25,7 +25,8 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AutoCalcHint } from "@/components/AutoCalcHint";
-import type { ItemDTO, SalaryDTO, TaxSettingDTO } from "@/types";
+import { ItemFieldLabel } from "@/components/ItemFieldLabel";
+import type { EditableItemDTO, ItemDTO, SalaryDTO, TaxSettingDTO } from "@/types";
 import type { AnnualTaxEntry } from "@/lib/annualTaxData";
 
 const salaryFormSchema = z.object({
@@ -101,7 +102,7 @@ export function SalaryForm({
 }: {
   salary?: SalaryDTO;
   taxSetting?: TaxSettingDTO | null;
-  items?: ItemDTO[];
+  items?: EditableItemDTO[];
   previousStandardMonthlyRemuneration?: number;
   previousSalaryData?: Record<string, unknown>;
   annualTaxData?: Record<number, AnnualTaxEntry>;
@@ -401,7 +402,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {earningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -423,7 +424,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {otherEarningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -448,7 +449,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {otherTaxableItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -567,7 +568,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {statutoryDeductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -590,7 +591,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {deductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <Label htmlFor={`custom-${item.id}`}>{item.itemName}</Label>
+                <ItemFieldLabel item={item} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
