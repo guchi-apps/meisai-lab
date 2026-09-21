@@ -45,33 +45,33 @@ const LIFE_INSURANCE_THRESHOLDS_RESIDENT_TAX = { first: 12000, second: 32000, th
 
 export function calculateBasicDeductionForIncomeTax(employmentIncome: number): number {
   const x = employmentIncome;
-  if (x < 1320000) return 950000;
-  if (x < 3360000) return 880000;
-  if (x < 4890000) return 680000;
-  if (x < 6550000) return 630000;
-  if (x < 23500000) return 580000;
-  if (x < 24000000) return 480000;
-  if (x < 24500000) return 320000;
-  if (x < 25000000) return 160000;
+  if (x <= 1320000) return 950000;
+  if (x <= 3360000) return 880000;
+  if (x <= 4890000) return 680000;
+  if (x <= 6550000) return 630000;
+  if (x <= 23500000) return 580000;
+  if (x <= 24000000) return 480000;
+  if (x <= 24500000) return 320000;
+  if (x <= 25000000) return 160000;
   return 0;
 }
 
 export function calculateBasicDeductionForResidentTax(employmentIncome: number): number {
   const x = employmentIncome;
-  if (x < 24000000) return 430000;
-  if (x < 24500000) return 290000;
-  if (x < 25000000) return 150000;
+  if (x <= 24000000) return 430000;
+  if (x <= 24500000) return 290000;
+  if (x <= 25000000) return 150000;
   return 0;
 }
 
 export function calculateIncomeTaxRate(taxableIncomeForIncomeTax: number): number {
   const x = taxableIncomeForIncomeTax;
-  if (x < 1950000) return 0.05;
-  if (x < 3300000) return 0.1;
-  if (x < 6950000) return 0.2;
-  if (x < 9000000) return 0.23;
-  if (x < 18000000) return 0.33;
-  if (x < 40000000) return 0.4;
+  if (x <= 1950000) return 0.05;
+  if (x <= 3300000) return 0.1;
+  if (x <= 6950000) return 0.2;
+  if (x <= 9000000) return 0.23;
+  if (x <= 18000000) return 0.33;
+  if (x <= 40000000) return 0.4;
   return 0.45;
 }
 
