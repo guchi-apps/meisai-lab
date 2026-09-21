@@ -26,11 +26,10 @@ function runTable(cases: Case<number>[], fn: (input: number) => number) {
   }
 }
 
-// 現状のコードは区間の上限ちょうどの値を「未満」で判定しており、条文（「以下」）とずれている（#233）。
-// 条文どおりの期待値を todo として残す（実装を直したら todo を外す）。todo の失敗は npm run test:unit を落とさない。
-// 失敗時のスタックトレースが大量に出ないよう、関数ごとに1件へまとめて比較する。
-function boundaryTodo(fn: (input: number) => number, boundaries: [number, number][]) {
-  it("区間の上限ちょうど（条文どおり）", { todo: "#233 で修正する" }, () => {
+// 条文は各区分の上限ちょうどを下の区分に含める（「以下」）。上限ちょうどの値を関数ごとに1件へまとめて比較する
+// （失敗時のスタックトレースが大量に出ないようにするため）。
+function boundaryTest(fn: (input: number) => number, boundaries: [number, number][]) {
+  it("区間の上限ちょうど（条文どおり「以下」）", () => {
     assert.deepEqual(
       boundaries.map(([input]) => [input, fn(input)]),
       boundaries
@@ -109,7 +108,7 @@ describe("calculateBasicDeductionForIncomeTax（基礎控除・所得税、令�
   );
 
   // 条文は「合計所得金額が132万円以下」など、各区分の上限ちょうどを下の区分に含める。
-  boundaryTodo(calculateBasicDeductionForIncomeTax, [
+  boundaryTest(calculateBasicDeductionForIncomeTax, [
     [1320000, 950000],
     [3360000, 880000],
     [4890000, 680000],
@@ -135,7 +134,7 @@ describe("calculateBasicDeductionForResidentTax（基礎控除・住民税）", 
     calculateBasicDeductionForResidentTax
   );
 
-  boundaryTodo(calculateBasicDeductionForResidentTax, [
+  boundaryTest(calculateBasicDeductionForResidentTax, [
     [24000000, 430000],
     [24500000, 290000],
     [25000000, 150000],
@@ -163,8 +162,8 @@ describe("calculateIncomeTaxRate（所得税の税率区分＝限界税率）", 
   );
 
   // 課税所得金額は1,000円未満切り捨て済みで、195万円ちょうどなどはそのまま入力になりうる。
-  // 税額（calculateIncomeTaxAmount）は「超」で加算しているため、ちょうどの値では税率と税額の区分が食い違う。
-  boundaryTodo(calculateIncomeTaxRate, [
+  // 税額（calculateIncomeTaxAmount）が「超」で加算しているのと同じ区分に、税率も合わせる。
+  boundaryTest(calculateIncomeTaxRate, [
     [1950000, 0.05],
     [3300000, 0.1],
     [6950000, 0.2],
