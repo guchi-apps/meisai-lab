@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { ItemManager } from "@/components/ItemManager";
 import { ItemsBreadcrumb } from "./breadcrumb";
 import type { ItemDTO } from "@/types";
 
 export default async function ItemsPage() {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const items = await db.item.findMany({
     where: { userId },

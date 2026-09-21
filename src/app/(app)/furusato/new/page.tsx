@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 
-import { requireUserId } from "@/lib/auth-user";
+import { requirePageUserId } from "@/lib/auth-user";
 import { FurusatoDonationForm } from "@/components/FurusatoDonationForm";
 
 export default async function NewFurusatoDonationPage({
@@ -8,8 +7,7 @@ export default async function NewFurusatoDonationPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
-  const userId = await requireUserId();
-  if (!userId) redirect("/auth/signin");
+  const userId = await requirePageUserId();
 
   const { year: yearParam } = await searchParams;
   const parsedYear = Number(yearParam);
