@@ -9,8 +9,11 @@
  * - RELEASE_USAGE — どう使うか。`1. `で始まる番号付きの複数行（issue-deck#1729）。
  *   **画面で使える変化が無いリリースでは空**で渡るため、その場合は usage を書かない
  *
- * 未設定・空のとき（ローカルで `npm version` を叩いた場合など）は、従来どおり手で埋める
- * ための枠だけを作る。
+ * RELEASE_CHANGELOG が未設定・空のとき（ローカルで `npm version` を叩いた場合や、画面で体感
+ * できる変化が無いリリース）は**エントリを作らない**（issue-deck#3282）。かつては
+ * 「（変更内容を追記してください）」という枠を作っていたが、誰も埋めないまま更新履歴の画面に
+ * その文字が残り続けた。書くことが無い版は履歴に載せない（バージョンだけが上がる）。
+ * RELEASE_USAGE だけがあっても作らない。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,8 +21,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const changelogPath = join(__dirname, "../src/lib/changelog.ts");
-
-export const CHANGELOG_PLACEHOLDER = "（変更内容を追記してください）";
 
 /**
  * RELEASE_CHANGELOG の文面を changes 配列へ整形する。
@@ -61,7 +62,11 @@ export function insertChangelogEntry(content, version, date, changes = [], usage
     throw new Error("APP_CHANGELOG marker not found in changelog.ts");
   }
 
-  const items = changes.length > 0 ? changes : [CHANGELOG_PLACEHOLDER];
+  // 何が変わったかが無い版は、使い方があっても載せない（変更の無い履歴は読む価値が無いため）。
+  if (changes.length === 0) {
+    return { content, inserted: false };
+  }
+
   // 使い方が空のリリースでは、項目ごと書かない（空の見出しは書き漏らしに見えるため）。
   const usageBlock =
     usage.length > 0
@@ -75,7 +80,7 @@ export function insertChangelogEntry(content, version, date, changes = [], usage
     version: "${version}",
     date: "${date}",
     changes: [
-${items.map((item) => `      "${escapeForTs(item)}",`).join("\n")}
+${changes.map((item) => `      "${escapeForTs(item)}",`).join("\n")}
     ],${usageBlock}
   },`;
 
@@ -109,18 +114,18 @@ function main() {
   );
 
   if (!inserted) {
-    console.log(`changelog.ts already has version ${version}; skipping.`);
+    console.log(
+      changes.length === 0
+        ? `No user-facing changes for v${version}; changelog entry not added.`
+        : `changelog.ts already has version ${version}; skipping.`
+    );
     return;
   }
 
   writeFileSync(changelogPath, content, "utf8");
-  if (changes.length > 0) {
-    console.log(
-      `Added changelog entry for v${version} (${changes.length} change(s), ${usage.length} usage line(s))`
-    );
-  } else {
-    console.log(`Added changelog stub for v${version}`);
-  }
+  console.log(
+    `Added changelog entry for v${version} (${changes.length} change(s), ${usage.length} usage line(s))`
+  );
 }
 
 const isMain =
