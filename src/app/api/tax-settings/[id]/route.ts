@@ -1,3 +1,8 @@
+import {
+  TAX_SETTING_CONFLICT_MESSAGE,
+  conflictResponse,
+  isUniqueConstraintError,
+} from "@/lib/apiConflict";
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { buildEffectiveFrom } from "@/lib/taxSetting";
@@ -25,8 +30,13 @@ export async function PUT(request: Request, { params }: Params) {
       ? { ...rates, effectiveFrom: buildEffectiveFrom(effectiveYear, effectiveMonth) }
       : rates;
 
-  const taxSetting = await db.taxSetting.update({ where: { id }, data });
-  return Response.json(taxSetting);
+  try {
+    const taxSetting = await db.taxSetting.update({ where: { id }, data });
+    return Response.json(taxSetting);
+  } catch (error) {
+    if (isUniqueConstraintError(error)) return conflictResponse(TAX_SETTING_CONFLICT_MESSAGE);
+    throw error;
+  }
 }
 
 export async function DELETE(_request: Request, { params }: Params) {

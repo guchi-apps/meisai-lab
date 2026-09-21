@@ -18,6 +18,7 @@ import {
   getResidentTaxAssessmentYear,
   INCOME_TAX_ADJUSTMENT_ITEM_NAMES,
 } from "@/lib/annualTax";
+import { readConflictMessage } from "@/lib/apiConflict";
 import { resolveManualNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -326,7 +327,7 @@ export function SalaryForm({
       });
 
       if (!res.ok) {
-        toast.error("保存に失敗しました");
+        toast.error(await readConflictMessage(res, "保存に失敗しました"));
         return;
       }
 
