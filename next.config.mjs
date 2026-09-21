@@ -1,4 +1,8 @@
-import type { NextConfig } from "next";
+// @ts-check
+
+// このファイルを .ts にしない: 本番の `next start` は .ts の設定ファイルをトランスパイルするために
+// SWCのネイティブバイナリを読み込み、そのまま常駐してメモリとスレッドを食う（#223）。
+// .mjs なら読み込まれない。型は JSDoc で付ける。
 
 const devAllowedOrigins = [
   "*.sslip.io",
@@ -7,7 +11,8 @@ const devAllowedOrigins = [
     .filter(Boolean) ?? []),
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   allowedDevOrigins: devAllowedOrigins,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "lh3.googleusercontent.com" }],
