@@ -17,6 +17,9 @@ const APP_NAME = "meisai-lab"; // 通知に出すアプリ名。他アプリへ�
 
 const COLOR_LOGIN = "#57f287";
 const MAX_VALUE_LEN = 500;
+// 認証コールバックは通知の完了を待ってからリダイレクトするため、Signaly が接続を受け付けたまま
+// 応答しない場合にログインの最後の画面で止まらないよう、待つ時間に上限を設ける。
+const REQUEST_TIMEOUT_MS = 3000;
 
 type SignalyField = { name: string; value: string; inline: boolean };
 
@@ -84,6 +87,7 @@ export async function notifySignalyLogin(
         color: COLOR_LOGIN,
         fields,
       }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
       console.error(
@@ -91,6 +95,12 @@ export async function notifySignalyLogin(
       );
     }
   } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      console.error(
+        `[signaly] ログイン通知が ${REQUEST_TIMEOUT_MS}ms 以内に完了しなかったため中断しました`
+      );
+      return;
+    }
     console.error("[signaly] ログイン通知の送信に失敗しました:", error);
   }
 }
