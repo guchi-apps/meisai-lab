@@ -1,5 +1,10 @@
 import type { Prisma } from "@prisma/client";
 
+import {
+  SALARY_DATE_CONFLICT_MESSAGE,
+  conflictResponse,
+  isUniqueConstraintError,
+} from "@/lib/apiConflict";
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import { withItemSnapshots } from "@/lib/itemSnapshotServer";
@@ -35,17 +40,31 @@ export async function PUT(request: Request, { params }: Params) {
   if (!existing) return Response.json({ error: "Not Found" }, { status: 404 });
 
   const { salaryDate, data, ...rest } = parsed.data;
-  const salary = await db.salary.update({
-    where: { id },
-    data: {
-      ...rest,
-      ...(salaryDate && { salaryDate: new Date(salaryDate) }),
-      ...(data && {
-        data: (await withItemSnapshots(userId, data, existing.data)) as Prisma.InputJsonValue,
-      }),
-    },
-  });
-  return Response.json(salary);
+  const nextDate = salaryDate ? new Date(salaryDate) : undefined;
+  const updateData = {
+    ...rest,
+    ...(nextDate && { salaryDate: nextDate }),
+    ...(data && {
+      data: (await withItemSnapshots(userId, data, existing.data)) as Prisma.InputJsonValue,
+    }),
+  };
+
+  try {
+    // 支給日を変える場合、変更先に削除済み（論理削除）の行があると一意制約に当たるため先に取り除く。
+    // 有効な同日の行があればupdateが一意制約違反になり、トランザクションごと巻き戻る。
+    const salary = await db.$transaction(async (tx) => {
+      if (nextDate) {
+        await tx.salary.deleteMany({
+          where: { userId, salaryDate: nextDate, deletedAt: { not: null }, id: { not: id } },
+        });
+      }
+      return tx.salary.update({ where: { id }, data: updateData });
+    });
+    return Response.json(salary);
+  } catch (error) {
+    if (isUniqueConstraintError(error)) return conflictResponse(SALARY_DATE_CONFLICT_MESSAGE);
+    throw error;
+  }
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
