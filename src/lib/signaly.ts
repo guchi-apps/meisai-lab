@@ -50,8 +50,11 @@ export async function notifySignalyLogin(
   }
 
   const headersList = await headers();
+  // 信頼できるプロキシは Apache（mod_proxy）1段だけ。Apache はクライアントが送ってきた
+  // X-Forwarded-For の**末尾に**実際の接続元を追記するため、先頭はクライアントが自由に書ける値になる。
+  // 「見覚えのない接続元」の判定を偽装で避けられないよう、末尾（Apache が見た接続元）を使う。
   const ip =
-    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headersList.get("x-forwarded-for")?.split(",").at(-1)?.trim() ||
     headersList.get("x-real-ip");
   const userAgent = headersList.get("user-agent");
 
