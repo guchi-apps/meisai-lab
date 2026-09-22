@@ -29,6 +29,18 @@ export interface ChangelogEntry {
  */
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.6.14",
+    date: "2026-09-22",
+    changes: [
+      "更新履歴に、内容の書かれていない空の項目が表示されないように修正しました。",
+    ],
+    usage: [
+      "1. 画面右上付近の「更新履歴」ボタンを押す",
+      "2. 表示される一覧を確認する",
+      "3. 成功: 「（変更内容を追記してください）」のような空の項目が表示されていない",
+    ],
+  },
+  {
     version: "1.6.12",
     date: "2026-09-21",
     changes: [
