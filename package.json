@@ -1,6 +1,6 @@
 {
   "name": "meisai-lab",
-  "version": "1.6.14",
+  "version": "1.6.15",
   "private": true,
   "engines": {
     "node": ">=20.19.0"
