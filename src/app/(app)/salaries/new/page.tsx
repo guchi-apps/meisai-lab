@@ -32,6 +32,9 @@ export default async function NewSalaryPage() {
     const value = previousSalaryData?.standardMonthlyRemuneration;
     return typeof value === "number" ? value : undefined;
   })();
+  // 給与明細PDFには年月しか無いため、支給日の「日」は前回の支給日に揃える（#256）。
+  // 支給日は日付入力の値を UTC の0時として保存している
+  const pdfImportPayday = previousSalary ? previousSalary.salaryDate.getUTCDate() : 25;
 
   return (
     <div className="space-y-4">
@@ -42,6 +45,7 @@ export default async function NewSalaryPage() {
         previousStandardMonthlyRemuneration={previousStandardMonthlyRemuneration}
         previousSalaryData={previousSalaryData}
         annualTaxData={annualTaxData}
+        pdfImportPayday={pdfImportPayday}
       />
     </div>
   );

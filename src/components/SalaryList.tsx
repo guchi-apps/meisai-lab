@@ -87,6 +87,9 @@ export function SalaryList({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
+        <Button asChild variant="outline">
+          <Link href="/salaries/new">PDFから登録</Link>
+        </Button>
         <Button asChild>
           <Link href="/salaries/new">新規登録</Link>
         </Button>
