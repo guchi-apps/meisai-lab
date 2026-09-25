@@ -107,6 +107,7 @@ Process:       PM2（本番）
 ```
 GET/POST     /api/salaries
 GET/PUT/DELETE /api/salaries/[id]
+POST         /api/salaries/import-pdf     給与明細PDF（multipart の file / password）から項目名と金額の行を読み取って返す。PDFは保存しない
 
 GET/POST     /api/bonuses
 PUT/DELETE   /api/bonuses/[id]
@@ -210,6 +211,7 @@ export async function GET(request: Request) {
 | コンポーネント | 用途 |
 |---|---|
 | `SalaryForm` / `BonusForm` | 給与・賞与の入力フォーム（React Hook Form + Zod、区分ごとの小計表示、自動計算のヒント表示） |
+| `PayslipPdfImport` | 給与の新規登録画面の「PDFから読み取る」カード。読み取った行の反映先を選び、PDFの総支給額・差引支給額と照合してから `SalaryForm` へ反映する（下記「給与明細PDFの取り込み」） |
 | `SalaryList` | 給与一覧（PC: テーブル、モバイル: カード） |
 | `ItemManager` | カスタム項目の追加・編集・削除・並び替え（`@dnd-kit`） |
 | `Charts/SalaryEarningChart` `SalaryDeductionChart` `BonusEarningChart` `BonusDeductionChart` | 支給額・控除額の推移グラフ（`ChartFrame` / `ChartLegend` / `chartColors` で共通化） |
@@ -281,6 +283,21 @@ npm run build:ci && npx next start -p 11057
 
 ---
 
+## 📄 給与明細PDFの取り込み（#256）
+
+- 抽出はサーバー（[payslipPdfServer.ts](./src/lib/payslipPdfServer.ts)、`unpdf` = pdf.js）、行の組み立て・割り当て・照合は
+  [payslipPdf.ts](./src/lib/payslipPdf.ts)（`db` 非依存・`npm run test:unit` 対象）
+- **日本語PDFは CMap が無いと項目名が1文字も取れない。** 見本の明細は `90ms-RKSJ-H`（Shift_JIS）で ToUnicode を
+  持たないため、pdf.js の CMap（`public/pdf-cmaps/`、`pdfjs-dist` から日本語分だけ複製）を `cMapUrl` で渡している。
+  本番のデプロイ資材は `src/` を含まず `public/` を含むため `public/` に置く
+- 想定する配置は「項目名の列と金額の列が同じ y 座標で並ぶ表」。同じ高さ（±3pt）の文字列を1行とみなし、金額の直前の
+  文字列を項目名にする。明細には年月しか無いので、支給日の日は前回登録した給与に揃える
+- 反映時は PDF に無い金額欄を 0 にする（新規フォームは前回の明細を初期値に持ち、空欄の保険料・税は自動計算するため、
+  残すと PDF と違う手取額で保存される）。手で選んだ割り当ては `localStorage` に項目名をキーとして記憶する
+- 実際の明細PDF・金額はリポジトリに置かない（公開リポジトリ）。テストは同じ配置の架空データで書く
+
+---
+
 ## ⚙️ props の変化に合わせて state を作り直すとき
 
 `eslint.config.mjs` で有効にしている React Compiler の
@@ -322,4 +339,4 @@ if (prev.base !== base) {
 
 ---
 
-**最終更新日:** 2026-09-20
+**最終更新日:** 2026-09-25

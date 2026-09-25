@@ -26,7 +26,9 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AutoCalcHint } from "@/components/AutoCalcHint";
-import { ItemFieldLabel } from "@/components/ItemFieldLabel";
+import { ItemFieldLabel, PdfMark } from "@/components/ItemFieldLabel";
+import { PayslipPdfImport } from "@/components/PayslipPdfImport";
+import type { PayslipFormValues } from "@/lib/payslipPdf";
 import type { EditableItemDTO, ItemDTO, SalaryDTO, TaxSettingDTO } from "@/types";
 import type { AnnualTaxEntry } from "@/lib/annualTaxData";
 
@@ -100,6 +102,7 @@ export function SalaryForm({
   previousStandardMonthlyRemuneration,
   previousSalaryData,
   annualTaxData,
+  pdfImportPayday,
 }: {
   salary?: SalaryDTO;
   taxSetting?: TaxSettingDTO | null;
@@ -107,6 +110,8 @@ export function SalaryForm({
   previousStandardMonthlyRemuneration?: number;
   previousSalaryData?: Record<string, unknown>;
   annualTaxData?: Record<number, AnnualTaxEntry>;
+  /** 指定するとPDF取り込みのカードを出す。PDFには年月しか無いため、支給日の「日」に使う */
+  pdfImportPayday?: number;
 }) {
   const router = useRouter();
   const isEditing = Boolean(salary);
@@ -114,6 +119,7 @@ export function SalaryForm({
   const [customValues, setCustomValues] = useState<Record<string, number>>(() =>
     initialCustomValues(salary?.data, previousSalaryData, isEditing, items)
   );
+  const [pdfApplied, setPdfApplied] = useState<Set<string>>(() => new Set());
 
   const earningItems = items.filter((item) => item.itemType === "earning");
   const otherEarningItems = items.filter((item) => item.itemType === "otherEarning");
@@ -129,6 +135,7 @@ export function SalaryForm({
     control,
     register,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<SalaryFormValues>({
@@ -286,6 +293,15 @@ export function SalaryForm({
     setCustomValues((prev) => ({ ...prev, [itemId]: value ?? 0 }));
   }
 
+  function applyPdf(values: PayslipFormValues) {
+    if (values.salaryDate) setValue("salaryDate", values.salaryDate, { shouldValidate: true });
+    for (const [field, value] of Object.entries(values.fields)) {
+      setValue(field as keyof SalaryFormValues, value, { shouldValidate: true });
+    }
+    setCustomValues(values.customValues);
+    setPdfApplied(new Set(values.applied));
+  }
+
   async function onSubmit(values: SalaryFormValues) {
     setIsSubmitting(true);
     try {
@@ -339,10 +355,13 @@ export function SalaryForm({
     }
   }
 
-  return (
+  const form = (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-xl space-y-6">
       <div className="space-y-1.5">
-        <Label htmlFor="salaryDate">支給日</Label>
+        <Label htmlFor="salaryDate">
+          支給日
+          <PdfMark show={pdfApplied.has("salaryDate")} />
+        </Label>
         <Input id="salaryDate" type="date" {...register("salaryDate")} />
         {errors.salaryDate && <p className="text-sm text-destructive">{errors.salaryDate.message}</p>}
       </div>
@@ -350,7 +369,10 @@ export function SalaryForm({
       <div className="space-y-3 rounded-md border p-3">
         <p className="text-sm font-medium">支給</p>
         <div className="space-y-1.5">
-          <Label htmlFor="baseSalary">基本給</Label>
+          <Label htmlFor="baseSalary">
+            基本給
+            <PdfMark show={pdfApplied.has("baseSalary")} />
+          </Label>
           <Controller
             control={control}
             name="baseSalary"
@@ -363,7 +385,10 @@ export function SalaryForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="overtimeAmount">超勤手当</Label>
+            <Label htmlFor="overtimeAmount">
+              超勤手当
+              <PdfMark show={pdfApplied.has("overtimeAmount")} />
+            </Label>
             <Controller
               control={control}
               name="overtimeAmount"
@@ -383,7 +408,10 @@ export function SalaryForm({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="overtimeHours">残業時間(h)</Label>
+            <Label htmlFor="overtimeHours">
+              残業時間(h)
+              <PdfMark show={pdfApplied.has("overtimeHours")} />
+            </Label>
             <Controller
               control={control}
               name="overtimeHours"
@@ -403,7 +431,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {earningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <ItemFieldLabel item={item} />
+                <ItemFieldLabel item={item} fromPdf={pdfApplied.has(`item:${item.id}`)} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -425,7 +453,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {otherEarningItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <ItemFieldLabel item={item} />
+                <ItemFieldLabel item={item} fromPdf={pdfApplied.has(`item:${item.id}`)} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -450,7 +478,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {otherTaxableItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <ItemFieldLabel item={item} />
+                <ItemFieldLabel item={item} fromPdf={pdfApplied.has(`item:${item.id}`)} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -465,7 +493,10 @@ export function SalaryForm({
       <div className="space-y-3 rounded-md border p-3">
         <p className="text-sm font-medium">法定控除</p>
         <div className="space-y-1.5">
-          <Label htmlFor="standardMonthlyRemuneration">標準報酬月額</Label>
+          <Label htmlFor="standardMonthlyRemuneration">
+            標準報酬月額
+            <PdfMark show={pdfApplied.has("standardMonthlyRemuneration")} />
+          </Label>
           <Controller
             control={control}
             name="standardMonthlyRemuneration"
@@ -477,7 +508,10 @@ export function SalaryForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="healthInsurance">健康保険料</Label>
+            <Label htmlFor="healthInsurance">
+              健康保険料
+              <PdfMark show={pdfApplied.has("healthInsurance")} />
+            </Label>
             <Controller
               control={control}
               name="healthInsurance"
@@ -493,7 +527,10 @@ export function SalaryForm({
             <AutoCalcHint manualValue={healthInsurance} autoValue={insuranceDefaults.healthInsurance} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pension">厚生年金保険料</Label>
+            <Label htmlFor="pension">
+              厚生年金保険料
+              <PdfMark show={pdfApplied.has("pension")} />
+            </Label>
             <Controller
               control={control}
               name="pension"
@@ -509,7 +546,10 @@ export function SalaryForm({
             <AutoCalcHint manualValue={pension} autoValue={insuranceDefaults.pension} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="employmentInsurance">雇用保険料</Label>
+            <Label htmlFor="employmentInsurance">
+              雇用保険料
+              <PdfMark show={pdfApplied.has("employmentInsurance")} />
+            </Label>
             <Controller
               control={control}
               name="employmentInsurance"
@@ -528,7 +568,10 @@ export function SalaryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="incomeTax">所得税</Label>
+            <Label htmlFor="incomeTax">
+              所得税
+              <PdfMark show={pdfApplied.has("incomeTax")} />
+            </Label>
             <Controller
               control={control}
               name="incomeTax"
@@ -544,7 +587,10 @@ export function SalaryForm({
             <AutoCalcHint manualValue={incomeTax} autoValue={incomeTaxAuto} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="residentTax">住民税</Label>
+            <Label htmlFor="residentTax">
+              住民税
+              <PdfMark show={pdfApplied.has("residentTax")} />
+            </Label>
             <Controller
               control={control}
               name="residentTax"
@@ -569,7 +615,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {statutoryDeductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <ItemFieldLabel item={item} />
+                <ItemFieldLabel item={item} fromPdf={pdfApplied.has(`item:${item.id}`)} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -592,7 +638,7 @@ export function SalaryForm({
           <div className="grid grid-cols-2 gap-4">
             {deductionItems.map((item) => (
               <div key={item.id} className="space-y-1.5">
-                <ItemFieldLabel item={item} />
+                <ItemFieldLabel item={item} fromPdf={pdfApplied.has(`item:${item.id}`)} />
                 <AmountInput
                   id={`custom-${item.id}`}
                   value={customValues[item.id]}
@@ -639,5 +685,13 @@ export function SalaryForm({
         </Button>
       </div>
     </form>
+  );
+
+  if (pdfImportPayday === undefined) return form;
+  return (
+    <div className="space-y-6">
+      <PayslipPdfImport items={items} payday={pdfImportPayday} onApply={applyPdf} />
+      {form}
+    </div>
   );
 }
