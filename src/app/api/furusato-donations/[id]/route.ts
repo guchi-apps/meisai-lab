@@ -1,7 +1,9 @@
 import { requireUserId } from "@/lib/auth-user";
 import { db } from "@/lib/db";
 import {
+  isValidReceiveRange,
   isValidStatusCombination,
+  RECEIVE_RANGE_MESSAGE,
   STATUS_COMBINATION_MESSAGE,
   UpdateFurusatoDonationSchema,
 } from "@/lib/validators";
@@ -22,7 +24,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { donatedAt, ...rest } = parsed.data;
+  const { donatedAt, receiveFrom, receiveTo, ...rest } = parsed.data;
 
   // 送られてこなかった項目は保存済みの値のままになるため、更新後の組み合わせで検証する
   const nextOneStopStatus = rest.oneStopStatus ?? existing.oneStopStatus;
@@ -34,12 +36,28 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
+  // undefined=未送信（既存値のまま）、null=クリア。更新後の組み合わせで幅を検証する
+  const nextReceiveFrom = receiveFrom === undefined ? existing.receiveFrom : receiveFrom;
+  const nextReceiveTo = receiveTo === undefined ? existing.receiveTo : receiveTo;
+  if (!isValidReceiveRange(nextReceiveFrom, nextReceiveTo)) {
+    return Response.json(
+      { error: { fieldErrors: { receiveTo: [RECEIVE_RANGE_MESSAGE] } } },
+      { status: 400 }
+    );
+  }
+
   const donatedAtDate = donatedAt !== undefined ? new Date(donatedAt) : undefined;
 
   const donation = await db.furusatoDonation.update({
     where: { id },
     data: {
       ...rest,
+      ...(receiveFrom !== undefined
+        ? { receiveFrom: receiveFrom === null ? null : new Date(receiveFrom) }
+        : {}),
+      ...(receiveTo !== undefined
+        ? { receiveTo: receiveTo === null ? null : new Date(receiveTo) }
+        : {}),
       // 寄付日を動かしたら year も追随させる（年をまたぐ修正で集計が食い違わないように）
       ...(donatedAtDate !== undefined
         ? { donatedAt: donatedAtDate, year: donatedAtDate.getFullYear() }

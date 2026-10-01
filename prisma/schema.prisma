@@ -152,6 +152,10 @@ model FurusatoDonation {
   category     String? // カテゴリ（肉・魚介類 など）
   portalSite   String? // 利用サイト（さとふる・楽天ふるさと納税 など）
 
+  // 返礼品の受け取り予定。申請段階では時期が確定しないため幅（開始日〜終了日）で持つ。片方だけでも可
+  receiveFrom DateTime?
+  receiveTo   DateTime?
+
   // "notApplied"(未申請) / "applied"(申請済み) / "accepted"(受付済み) / "switchedToTaxReturn"(確定申告へ切替)
   oneStopStatus     String @default("notApplied")
   // "notReceived"(未取得) / "received"(受領済み) / "notNeeded"(不要（ワンストップ）)

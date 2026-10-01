@@ -112,6 +112,8 @@ export type FurusatoDonationDTO = {
   returnItem: string | null;
   category: string | null;
   portalSite: string | null;
+  receiveFrom: string | null;
+  receiveTo: string | null;
   oneStopStatus: OneStopStatus;
   certificateStatus: CertificateStatus;
   memo: string | null;
