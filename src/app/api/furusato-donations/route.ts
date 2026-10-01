@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { donatedAt, ...rest } = parsed.data;
+  const { donatedAt, receiveFrom, receiveTo, ...rest } = parsed.data;
   const donatedAtDate = new Date(donatedAt);
 
   const donation = await db.furusatoDonation.create({
@@ -58,6 +58,8 @@ export async function POST(request: Request) {
       userId,
       ...rest,
       donatedAt: donatedAtDate,
+      receiveFrom: receiveFrom ? new Date(receiveFrom) : null,
+      receiveTo: receiveTo ? new Date(receiveTo) : null,
       // year は donatedAt から導出する。クライアントからは受け取らない
       year: donatedAtDate.getFullYear(),
     },
