@@ -36,12 +36,21 @@ const donationFormSchema = z
     returnItem: z.string().optional(),
     category: z.string().optional(),
     portalSite: z.string().optional(),
+    receiveFrom: z.string().optional(),
+    receiveTo: z.string().optional(),
     oneStopStatus: z.enum(["notApplied", "applied", "accepted", "switchedToTaxReturn"]),
     certificateStatus: z.enum(["notReceived", "received", "notNeeded"]),
     memo: z.string().optional(),
   })
   // 確定申告へ切り替えた寄付は寄附金控除証明書が必ず要るため、「不要」にはできない。
   .superRefine((values, ctx) => {
+    if (values.receiveFrom && values.receiveTo && values.receiveFrom > values.receiveTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["receiveTo"],
+        message: "開始日は終了日以前にしてください",
+      });
+    }
     if (values.oneStopStatus === "switchedToTaxReturn" && values.certificateStatus === "notNeeded") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -91,6 +100,8 @@ export function FurusatoDonationForm({
       returnItem: donation?.returnItem ?? "",
       category: donation?.category ?? "",
       portalSite: donation?.portalSite ?? "",
+      receiveFrom: donation?.receiveFrom ? toDateInputValue(donation.receiveFrom) : "",
+      receiveTo: donation?.receiveTo ? toDateInputValue(donation.receiveTo) : "",
       oneStopStatus: donation?.oneStopStatus ?? "notApplied",
       certificateStatus: donation?.certificateStatus ?? "notReceived",
       memo: donation?.memo ?? "",
@@ -107,6 +118,9 @@ export function FurusatoDonationForm({
         returnItem: values.returnItem || undefined,
         category: values.category || undefined,
         portalSite: values.portalSite || undefined,
+        // 空欄は null で送る（編集画面で入力済みの受け取り予定を消せるように）
+        receiveFrom: values.receiveFrom ? new Date(values.receiveFrom).toISOString() : null,
+        receiveTo: values.receiveTo ? new Date(values.receiveTo).toISOString() : null,
         oneStopStatus: values.oneStopStatus,
         certificateStatus: values.certificateStatus,
         memo: values.memo || undefined,
@@ -179,6 +193,25 @@ export function FurusatoDonationForm({
             <Input id="portalSite" placeholder="さとふる" {...register("portalSite")} />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">受け取り予定</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="receiveFrom">開始日</Label>
+            <Input id="receiveFrom" type="date" {...register("receiveFrom")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="receiveTo">終了日</Label>
+            <Input id="receiveTo" type="date" {...register("receiveTo")} />
+          </div>
+        </div>
+        {errors.receiveTo && <p className="text-sm text-destructive">{errors.receiveTo.message}</p>}
+        <p className="text-xs text-muted-foreground">
+          申請時点で時期が決まっていなければ幅で指定できます。片方だけの入力も可能で、
+          1日だけの場合は同じ日を入れてください。
+        </p>
       </div>
 
       <div className="space-y-3 rounded-md border p-3">

@@ -40,6 +40,15 @@ function formatDate(iso: string) {
   return format(new Date(iso), "yyyy/MM/dd");
 }
 
+// 受け取り予定の幅。片方だけなら「〜12/31」「11/01〜」の形にし、両方未設定なら null
+function formatReceiveRange(donation: FurusatoDonationDTO): string | null {
+  const { receiveFrom, receiveTo } = donation;
+  if (!receiveFrom && !receiveTo) return null;
+  const from = receiveFrom ? formatDate(receiveFrom) : "";
+  const to = receiveTo ? formatDate(receiveTo) : "";
+  return from === to ? from : `${from}〜${to}`;
+}
+
 function formatYen(amount: number) {
   return `${Math.round(amount).toLocaleString()} 円`;
 }
@@ -134,6 +143,7 @@ export function FurusatoDonationList({
               <TableHead>寄付日</TableHead>
               <TableHead className="text-right">寄付額</TableHead>
               <TableHead>返礼品・ポータル</TableHead>
+              <TableHead>受け取り予定</TableHead>
               <TableHead>ワンストップ特例</TableHead>
               <TableHead>証明書</TableHead>
               <TableHead className="w-0" />
@@ -165,6 +175,9 @@ export function FurusatoDonationList({
                     <span className="block text-xs text-muted-foreground">{donation.portalSite}</span>
                   )}
                 </TableCell>
+                <TableCell className="tabular-nums">
+                  {formatReceiveRange(donation) ?? <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell>
                   <OneStopStatusBadge status={donation.oneStopStatus} />
                 </TableCell>
@@ -195,7 +208,7 @@ export function FurusatoDonationList({
             <TableRow>
               <TableCell colSpan={2}>表示中の {donations.length} 件</TableCell>
               <TableCell className="text-right tabular-nums">{Math.round(total).toLocaleString()}</TableCell>
-              <TableCell colSpan={4} />
+              <TableCell colSpan={5} />
             </TableRow>
           </TableFooter>
         </Table>
@@ -222,6 +235,11 @@ export function FurusatoDonationList({
                 .filter(Boolean)
                 .join(" ・ ")}
             </p>
+            {formatReceiveRange(donation) && (
+              <p className="text-xs text-muted-foreground">
+                受け取り予定 {formatReceiveRange(donation)}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-1.5">
               <OneStopStatusBadge status={donation.oneStopStatus} />
               <CertificateStatusBadge status={donation.certificateStatus} withPrefix />

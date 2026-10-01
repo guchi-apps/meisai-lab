@@ -99,6 +99,9 @@ const furusatoDonationFields = z.object({
   returnItem: z.string().max(200).optional(),
   category: z.string().max(50).optional(),
   portalSite: z.string().max(50).optional(),
+  // 受け取り予定の幅。null は「未設定に戻す」（PATCH でクリアするために受け付ける）
+  receiveFrom: z.string().datetime("無効な日付形式").nullable().optional(),
+  receiveTo: z.string().datetime("無効な日付形式").nullable().optional(),
   oneStopStatus: OneStopStatusEnum.optional(),
   certificateStatus: CertificateStatusEnum.optional(),
   memo: z.string().optional(),
@@ -118,7 +121,21 @@ export function isValidStatusCombination(
 export const STATUS_COMBINATION_MESSAGE =
   "確定申告へ切替の場合、証明書を「不要（ワンストップ）」にはできません";
 
+export const RECEIVE_RANGE_MESSAGE = "受け取り予定の開始日は終了日以前にしてください";
+
+// どちらかが未設定なら幅は成立しているものとして扱う。
+export function isValidReceiveRange(
+  receiveFrom: Date | string | null | undefined,
+  receiveTo: Date | string | null | undefined
+): boolean {
+  if (!receiveFrom || !receiveTo) return true;
+  return new Date(receiveFrom).getTime() <= new Date(receiveTo).getTime();
+}
+
 export const CreateFurusatoDonationSchema = furusatoDonationFields.superRefine((value, ctx) => {
+  if (!isValidReceiveRange(value.receiveFrom, value.receiveTo)) {
+    ctx.addIssue({ code: "custom", path: ["receiveTo"], message: RECEIVE_RANGE_MESSAGE });
+  }
   if (
     !isValidStatusCombination(
       value.oneStopStatus ?? "notApplied",
