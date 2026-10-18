@@ -219,6 +219,8 @@ jobs:
       - name: Deploy and restart
         uses: appleboy/ssh-action@v1
         env:
+          # 稼働している版の照合に使う（#301）。ヘルスチェックが `/api/app-version` の `sha` と突き合わせる。
+          APP_COMMIT_SHA: ${{ github.sha }}
           DATABASE_URL: ${{ env.DATABASE_URL }}
           MIGRATE_DATABASE_URL: ${{ env.MIGRATE_DATABASE_URL }}
           DB_USER: ${{ env.DB_USER }}
@@ -233,10 +235,15 @@ jobs:
           username: ${{ env.USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
           port: ${{ env.SSH_PORT }}
-          envs: DATABASE_URL,MIGRATE_DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR
+          envs: APP_COMMIT_SHA,DATABASE_URL,MIGRATE_DATABASE_URL,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME,SIGNALY_LOGIN_WEBHOOK_URL,TARGET_DIR
           script: |
             set -euo pipefail
             cd "${TARGET_DIR}"
+
+            if [ -z "${APP_COMMIT_SHA:-}" ]; then
+              echo "APP_COMMIT_SHA is empty; cannot verify the deployed version."
+              exit 1
+            fi
 
             # 待受ポートはシークレットではなく設定値として平文で持つ
             # （guchi-apps/docs の standards/ports.md「ポート番号は 1Password で管理しない」。#113）。
@@ -263,6 +270,7 @@ jobs:
             update_env DB_PORT "$DB_PORT"
             update_env DB_NAME "$DB_NAME"
             update_env SIGNALY_LOGIN_WEBHOOK_URL "$SIGNALY_LOGIN_WEBHOOK_URL"
+            update_env APP_COMMIT_SHA "$APP_COMMIT_SHA"
 
             echo "Installing production dependencies..."
             npm install --omit=dev --no-audit --prefer-offline
@@ -285,15 +293,20 @@ jobs:
             # アプリが正常に立ち上がっていても deploy ジョブが失敗する。失敗すると後続の
             # release がスキップされ、タグはあるのに GitHub Release が作られない状態になる
             # （複数アプリを同時にデプロイした際に実際に発生した）。
+            # `/` は旧版が動いたままでも 200 を返すため、`/api/app-version` が返す `sha` が
+            # 今回デプロイしたコミットと一致するまで成功にしない（#301）。
+            body=""
             for i in $(seq 1 30); do
-              if curl -fsS -o /dev/null "http://127.0.0.1:${PORT}/"; then
-                echo "Deployment successful."
+              body="$(curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/api/app-version" 2>/dev/null || true)"
+              if [ -n "$body" ] && printf '%s' "$body" | grep -qF "\"sha\":\"${APP_COMMIT_SHA}\""; then
+                echo "Deployment successful. (sha=${APP_COMMIT_SHA})"
                 exit 0
               fi
               sleep 2
             done
 
-            echo "Health check failed after 60s."
+            echo "Health check failed after 60s: /api/app-version did not report sha=${APP_COMMIT_SHA}."
+            echo "last response: ${body:-<none>}"
             pm2 describe meisai-lab || true
             pm2 logs meisai-lab --lines 50 --nostream || true
             exit 1

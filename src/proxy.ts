@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { resolveOrigin } from "@/lib/request-origin";
+import { isProxyBypassPath } from "@/lib/proxyBypass";
 import { isReadOnly, isWriteMethod, listPathForWritePage, readOnlyResponse } from "@/lib/readOnly";
 import { createProxyClient, isAuthUnreachable, serviceUnavailable } from "@/lib/supabase/proxy";
 
@@ -11,6 +12,11 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export default async function proxy(request: NextRequest) {
+  // デプロイのヘルスチェック（/api/app-version）は Supabase へ問い合わせずに通す（#301）。
+  if (isProxyBypassPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   const { supabase, getResponse } = createProxyClient(request);
   const {
     data: { user },
