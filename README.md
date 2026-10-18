@@ -53,10 +53,15 @@ Google OAuthのクライアントはSupabase側（共通プロジェクト）で
 
 | 置き場所 | GitHub側の名前 | 用途 |
 | --- | --- | --- |
-| organization secret | `SERVER_SSH_PRIVATE_KEY` / `SERVER_HOST` / `SERVER_USERNAME` / `SERVER_SSH_PORT` | デプロイ先VPSへのSSH接続 |
+| organization secret | `SERVER_HOST` / `SERVER_USERNAME` / `SERVER_SSH_PORT` | デプロイ先VPSへのSSH接続先 |
+| repository secret | `SSH_PRIVATE_KEY` | このアプリ専用のデプロイ鍵（正は `op://apps/meisai-lab/deploy-ssh-key`）。VPSのapp-deploy-gateにしか入れない（#301） |
 | organization secret | `SHARED_DB_HOST` / `SHARED_DB_PORT` / `SHARED_DB_USER` / `SHARED_DB_PASSWORD` / `SHARED_DB_MIGRATE_USER` / `SHARED_DB_MIGRATE_PASSWORD` | 共有MariaDBの接続情報 |
 | organization variable | `SUPABASE_PROJECT_URL` / `SUPABASE_PUBLISHABLE_KEY` | Supabase Authの値（クライアントに埋め込む公開値のためvariable） |
-| repository secret | `TARGET_DIR` / `DB_NAME` / `SIGNALY_WEBHOOK_URL` / `SIGNALY_LOGIN_WEBHOOK_URL` | meisai-lab固有の値 |
+| repository secret | `TARGET_DIR` / `DB_NAME` / `SIGNALY_WEBHOOK_URL` / `SIGNALY_LOGIN_WEBHOOK_URL` | meisai-lab固有の値（`TARGET_DIR` はgateが置き場を固定するため使わなくなった。撤去は移行を確かめてから。#301） |
+
+### 本番デプロイの流れ（app-deploy-gate）
+
+`main` へのpushで `.github/workflows/deploy.yml` がビルドし、VPSの app-deploy-gate（guchi-apps/vps#275）へ `upload`（配布物）→ `env`（`.env` へ書く値。1行1変数のため改行を含む値は送れない）→ `deploy` の3回だけSSHする（#301）。鍵はこのアプリ専用で、VPS側の `authorized_keys` の `command=` がgateのアプリ名 `meisai-lab`（置き場 `/home/github-user/apps/meisai-lab`）を固定する。旧配布物の削除・展開・`.env` 更新・`npm ci --omit=dev`・`prisma migrate deploy`（マイグレーション専用ユーザー。未設定なら通常ユーザー）・pm2の再起動（`deploy/ecosystem.config.js`）・`/api/app-version` の `sha` 照合はgateが行う。VPS上で独自のコマンドは実行できないため、デプロイ手順を足すときはgateが受け付けるか（マイグレーション直前なら `deploy/pre-migrate.sh`）を先に確かめる。
 
 `PORT` はsecret / variableでは管理せず、`.github/workflows/deploy.yml` に平文で持つ（#113）。`OP_SERVICE_ACCOUNT_TOKEN` のrepository secretは登録したままだが、ワークフローからは参照していない。
 
