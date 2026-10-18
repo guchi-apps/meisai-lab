@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { resolveOrigin } from "@/lib/request-origin";
+import { isReadOnly, isWriteMethod, listPathForWritePage, readOnlyResponse } from "@/lib/readOnly";
 import { createProxyClient, isAuthUnreachable, serviceUnavailable } from "@/lib/supabase/proxy";
 
 const publicPaths = ["/", "/auth/signin", "/auth/error", "/auth/callback"];
@@ -43,6 +44,7 @@ export default async function proxy(request: NextRequest) {
   // /api/* はルートハンドラ自身が requireUserId() で認証チェックし、
   // 401 JSON を返す設計のため、proxy ではリダイレクトせず素通りさせる。
   if (pathname.startsWith("/api/")) {
+    if (isReadOnly() && isWriteMethod(request.method)) return readOnlyResponse();
     return getResponse();
   }
 
@@ -50,6 +52,11 @@ export default async function proxy(request: NextRequest) {
     const signInUrl = new URL(`${origin}/auth/signin`);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  if (isReadOnly()) {
+    const listPath = listPathForWritePage(pathname);
+    if (listPath) return NextResponse.redirect(`${origin}${listPath}`);
   }
 
   return getResponse();
