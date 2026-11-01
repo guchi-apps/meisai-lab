@@ -57,7 +57,7 @@ Google OAuthのクライアントはSupabase側（共通プロジェクト）で
 | repository secret | `SSH_PRIVATE_KEY` | このアプリ専用のデプロイ鍵（正は `op://apps/meisai-lab/deploy-ssh-key`）。VPSのapp-deploy-gateにしか入れない（#301） |
 | organization secret | `SHARED_DB_HOST` / `SHARED_DB_PORT` / `SHARED_DB_USER` / `SHARED_DB_PASSWORD` / `SHARED_DB_MIGRATE_USER` / `SHARED_DB_MIGRATE_PASSWORD` | 共有MariaDBの接続情報 |
 | organization variable | `SUPABASE_PROJECT_URL` / `SUPABASE_PUBLISHABLE_KEY` | Supabase Authの値（クライアントに埋め込む公開値のためvariable） |
-| repository secret | `TARGET_DIR` / `DB_NAME` / `SIGNALY_WEBHOOK_URL` / `SIGNALY_LOGIN_WEBHOOK_URL` | meisai-lab固有の値（`TARGET_DIR` はgateが置き場を固定するため使わなくなった。撤去は移行を確かめてから。#301） |
+| repository secret | `DB_NAME` / `SIGNALY_WEBHOOK_URL` / `SIGNALY_LOGIN_WEBHOOK_URL` | meisai-lab固有の値 |
 
 ### 本番デプロイの流れ（app-deploy-gate）
 
